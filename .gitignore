@@ -1,0 +1,14 @@
+*.py
+*.tsv
+bin/
+src/main/resources/filtered_specifications/
+src/main/resources/specifications/
+src/main/resources/classification/*.csv
+src/main/resources/classification/*.json
+src/main/resources/classification/.Rhistory
+src/main/resources/tsv/
+src/main/resources/id2category2urls.json
+target/
+.settings/
+.classpath
+.project
