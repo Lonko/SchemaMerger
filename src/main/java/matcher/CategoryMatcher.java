@@ -384,7 +384,5 @@ public class CategoryMatcher {
 //		list.add(prod);
 //		list.add(prod2);
 //		System.out.println(cm.mergeProducts(list, schema).get("spec", Document.class));
-		String[] str = "una # prova  ##### pe".split("( |(###))+");
-		for(String s : str) System.out.println(s);
 	}
 }

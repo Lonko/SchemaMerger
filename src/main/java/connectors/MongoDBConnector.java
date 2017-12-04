@@ -465,8 +465,6 @@ public class MongoDBConnector {
 		MongoDBConnector mdbc = new MongoDBConnector(fdc);
 //		mdbc.initializeCollection("Products");
 //		mdbc.updateProductsRL();
-		String url = "http://www.qualcosa.net.bohh/blabljls";
-		System.out.println(mdbc.getDomain(url));
 //		List<String> s = new ArrayList<String>();
 //		s.add("vanvreedes.com");
 //		List<Document[]> docs = mdbc.getProdsInRL(s, "tv");
