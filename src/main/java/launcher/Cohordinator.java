@@ -42,7 +42,7 @@ public class Cohordinator {
 		schema.entrySet().forEach(entry -> {
 			List<String> attributes = schemaMap.getOrDefault(entry.getValue(), new ArrayList<String>());
 			attributes.add(entry.getKey());
-			schemaMap.put(entry.getKey(), attributes);
+			schemaMap.put(entry.getValue(), attributes);
 		});
 		
 		finalSchema.addAll(schemaMap.values());
@@ -53,8 +53,13 @@ public class Cohordinator {
 	}
 	
 	public static void main(String [] args){
+		long start = System.currentTimeMillis();
 		FileDataConnector fdc = new FileDataConnector();
+		long time = System.currentTimeMillis() - start;
+		System.out.println("Created FileDataConnector (" + (time/1000) + " s)");
 		MongoDBConnector mdbc = new MongoDBConnector(fdc);
+		time =  System.currentTimeMillis() - start;
+		System.out.println("Created MongoDBConnector (" + (time/1000) + " s)");
 //		String ds = "src/main/resources/filtered_specifications";
 //		String rl = "src/main/resources/id2category2urls.json";
 //		String ts = "src/main/resources/training_sets";
@@ -65,26 +70,30 @@ public class Cohordinator {
 		String modelPath = "/home/marco/workspace/SchemaMerger/src/main/resources/classification/modelN.rda";
 		RConnector r = new RConnector(modelPath);
 		r.start();
+		time =  System.currentTimeMillis() - start;
+		System.out.println("Started RConnector (" + (time/1000) + " s)");
 		CategoryMatcher cm = new CategoryMatcher(mdbc, r);
+		time =  System.currentTimeMillis() - start;		
+		System.out.println("Created CategoryMatcher (" + (time/1000) + " s)");
 //		fdc.printTrainingSet("tsWithTuples", cm.getTrainingSetWithTuples(1000, 14000, true, 1.0));
 		List<String> websites = new ArrayList<>();
 		websites.add("vanvreedes.com");
 		websites.add("brothersmain.com");
 		websites.add("www.wettsteins.com");
-//		websites.add("www.jsappliance.com");
-//		websites.add("www.digiplususa.com");
-//		websites.add("www.rewstv.com");
-//		websites.add("www.dakotatv.com");
+		websites.add("www.jsappliance.com");
+		websites.add("www.digiplususa.com");
+		websites.add("www.rewstv.com");
+		websites.add("www.dakotatv.com");
 		Cohordinator c = new Cohordinator();
-		long millis = System.currentTimeMillis();
+		time =  System.currentTimeMillis() - start;
 		try{
 //			Match match = cm.getMatch(websites, "tv", 0);
 //			fdc.printMatch("wettsteins(card1)", match.toCSVFormat());
-			fdc.printSchema("schema3", c.matchAllSourcesInCategory(websites, "tv", cm, 0));
+			fdc.printSchema("schema7", c.matchAllSourcesInCategory(websites, "tv", cm, 0));
 		} finally {
-			r.stop();           //da mettere nel metodo per i match a cascata
+			r.stop();          
 		}
-		millis = System.currentTimeMillis() - millis;
-		System.out.println(millis/1000);
+		time =  System.currentTimeMillis() - start;
+		System.out.println("Fine match (" + (time/1000) + " s)");
 	}
 }
