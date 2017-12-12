@@ -9,6 +9,7 @@ import java.util.Map;
 
 import matcher.CategoryMatcher;
 import model.Match;
+import model.Schema;
 import connectors.FileDataConnector;
 import connectors.MongoDBConnector;
 import connectors.RConnector;
@@ -19,10 +20,10 @@ public class Cohordinator {
 		
 	}	
 	
-	public List<List<String>> matchAllSourcesInCategory(List<String> orderedWebsites, String category,
+	public Schema matchAllSourcesInCategory(List<String> orderedWebsites, String category,
 													CategoryMatcher cm, int cardinality){
 		
-		Map<String, String> schema = new HashMap<>();
+		Schema schema = new Schema();
 		List<String> currentMatchSources = new ArrayList<>();
 		currentMatchSources.add(orderedWebsites.get(0));
 		
@@ -32,24 +33,7 @@ public class Cohordinator {
 			Match newMatch = cm.getMatch(currentMatchSources, category, cardinality, schema);
 		}
 		
-		return buildFinalSchema(schema);
-	}
-	
-	private List<List<String>> buildFinalSchema(Map<String, String> schema){
-		Map<String, List<String>> schemaMap = new HashMap<>();
-		List<List<String>> finalSchema = new ArrayList<>();
-		
-		schema.entrySet().forEach(entry -> {
-			List<String> attributes = schemaMap.getOrDefault(entry.getValue(), new ArrayList<String>());
-			attributes.add(entry.getKey());
-			schemaMap.put(entry.getValue(), attributes);
-		});
-		
-		finalSchema.addAll(schemaMap.values());
-		finalSchema.sort(Comparator.comparing(List::size));
-		Collections.reverse(finalSchema);
-		
-		return finalSchema;
+		return schema;
 	}
 	
 	public static void main(String [] args){

@@ -13,6 +13,8 @@ import java.util.Scanner;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+import model.Schema;
+
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -118,23 +120,36 @@ public class FileDataConnector {
 		printCSV(source, match, header);
 	}
 	
-	public void printSchema(String name, List<List<String>> schema){
+	public void printSchema(String name, Schema schema){
 		PrintWriter writer = null;
 		JSONObject json = new JSONObject();
 		int clusterID = 0;
+		String header = "Attribute,MatchLinkage,TotalLinkage";
+		List<String> csvRows = new ArrayList<>();
 		
 		try { 
 			writer = new PrintWriter(new File(this.tsPath + "/" + name + ".json"));
 			
-			for(List<String> cluster : schema){
+			for(List<String> cluster : schema.schema2Clusters()){
 				JSONArray jsonCluster = new JSONArray();
 				jsonCluster.addAll(cluster);
 				json.put(clusterID, jsonCluster);	
 				clusterID++;
+				//add rows for the linkage CSV
+				for(String attr : cluster){
+					if(schema.getMatchLinkage().containsKey(attr) ||
+					   schema.getTotalLinkage().containsKey(attr)){
+						int matchLinkage = schema.getMatchLinkage().getOrDefault(attr, 0);
+						int totLinkage = schema.getTotalLinkage().get(attr);
+						String row = attr.replaceAll(",", "#;#")+","+matchLinkage+","+totLinkage;
+						csvRows.add(row);
+					}
+				}
 			}
 			
 			String jsonToPrint = JsonWriter.formatJson(json.toJSONString());
 			writer.print(jsonToPrint);
+			printCSV(name+"_linkage", csvRows, header);
 			
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -146,14 +161,14 @@ public class FileDataConnector {
 		}
 	}
 	
-	private void printCSV(String name, List<String> trainingSet, String header){
+	private void printCSV(String name, List<String> rows, String header){
 		PrintWriter writer = null;
 		
 		try { 
 			writer = new PrintWriter(new File(this.tsPath + "/" + name + ".csv"));
 			writer.print(header);
 			
-			for(String row : trainingSet){
+			for(String row : rows){
 				writer.println();
 				writer.print(row);
 			}

@@ -16,6 +16,7 @@ import model.DataFrame;
 import model.Features;
 import model.InvertedIndexesManager;
 import model.Match;
+import model.Schema;
 
 import org.bson.Document;
 
@@ -40,7 +41,7 @@ public class CategoryMatcher {
 		this.r = r;
 	}
 	
-	public Match getMatch(List<String> websites, String category, int cardinality, Map<String, String> schemaMatch){
+	public Match getMatch(List<String> websites, String category, int cardinality, Schema schemaMatch){
 		//last website is the one to be matched with the catalog
 		String newSource = websites.remove(websites.size()-1);
 		//linked page -> pages in catalog
@@ -51,32 +52,33 @@ public class CategoryMatcher {
 		//Inverted indexes (attribute name -> indexes of prods)
 		InvertedIndexesManager invIndexes = getInvertedIndexes(linkedProds, newSource);
 
-		DataFrame dataFrame = computeAttributesFeatures(linkedProds, invIndexes, cardinality, newSource);
+		Map<String, Integer> attributesLinkage = new HashMap<>();
+		DataFrame dataFrame = computeAttributesFeatures(linkedProds, invIndexes, cardinality, newSource, attributesLinkage);
 		double[] predictions = r.classify(dataFrame);
 		Match match = filterMatch(dataFrame, predictions);
 		
-		updateSchema(schemaMatch, invIndexes, match);
+		updateSchema(schemaMatch, invIndexes, match, attributesLinkage);
 		
 		return match;
 	}
 	
 	//update all products pages' attribute names and fuses catalog prods in linkageS
-	private List<Document[]> setupCatalog(Map<Document, List<Document>> prods, Map<String, String> schema){
+	private List<Document[]> setupCatalog(Map<Document, List<Document>> prods, Schema schema){
 		List<Document[]> updatedList = new ArrayList<>();
 		
 		for(Map.Entry<Document, List<Document>> linkage : prods.entrySet()){
 			Document sourcePage = linkage.getKey();
 			Document catalogPage = mergeProducts(linkage.getValue(), schema);
-			updateSpecs(sourcePage, schema);
+			updateSpecs(sourcePage, schema, true);
 			updatedList.add(new Document[]{catalogPage, sourcePage});
 		}
 		
 		return updatedList;
 	}
 	
-	private Document mergeProducts(List<Document> prods, Map<String, String> schema){
+	private Document mergeProducts(List<Document> prods, Schema schema){
 		//update the attribute names according to the existing schema
-		prods.forEach(p -> updateSpecs(p, schema));
+		prods.forEach(p -> updateSpecs(p, schema, false));
 		Map<String, Object> newSpecs = new HashMap<>();
 		
 		for(Document p : prods)
@@ -95,15 +97,21 @@ public class CategoryMatcher {
 	}
 	
 	//update attribute names of a single product page
-	private void updateSpecs(Document p, Map<String, String> schema){
+	private void updateSpecs(Document p, Schema schema, boolean isInCatalog){
 		Document specs = p.get("spec", Document.class);
 		String website = p.getString("website");
 		Document newSpecs = new Document();
 		//update attribute names to the format "attribute###website"
 		specs.keySet().forEach(attr -> {
 			if(!attr.contains("###")){
+				if(isInCatalog){
+					int counter = schema.getTotalLinkage()
+							  			.getOrDefault(attr+"###"+website, 0) + 1;
+					schema.getTotalLinkage().put(attr+"###"+website, counter);
+				}
 				String value = specs.getString(attr);
-				newSpecs.append(schema.getOrDefault(attr+"###"+website, attr+"###"+website), value);
+				newSpecs.append(schema.getAttributesMap()
+									  .getOrDefault(attr+"###"+website, attr+"###"+website), value);
 			}
 		});
 		p.put("spec", newSpecs);
@@ -156,7 +164,7 @@ public class CategoryMatcher {
 	}
 	
 	private DataFrame computeAttributesFeatures(List<Document[]> linkedProds, InvertedIndexesManager invIndexes,
-												int cardinality, String website){
+										int cardinality, String website, Map<String, Integer> attributesLinkage){
 		
 		DataFrame df = new DataFrame();
 		Set<String> attrSet = new TreeSet<>();
@@ -189,6 +197,7 @@ public class CategoryMatcher {
 				List<Document[]> linkageL = new ArrayList<>();
 				commonProdsL.forEach(i -> linkageL.add(linkedProds.get(i)));
 				
+				attributesLinkage.put(aSource + aCatalog, linkageS.size());
 				Features features = computeFeatures(linkageS, linkageL, aCatalog, aSource);
 				df.addRow(features, aCatalog, aSource);
 			}
@@ -349,19 +358,23 @@ public class CategoryMatcher {
 	/* The update consist in adding every attribute found in the matched source (even those not matched)
 	 * and new attributes from the catalog (if there are) 
 	 */
-	public void updateSchema(Map<String, String> schema, InvertedIndexesManager invIndexes, Match match){
+	public void updateSchema(Schema schema, InvertedIndexesManager invIndexes,
+							 Match match, Map<String, Integer> attributesLinkage){
 		//add new catalog's attribute
 		for(String catAttr : invIndexes.getCatalogIndex().keySet())
-			if(!schema.containsKey(catAttr))
-				schema.put(catAttr, catAttr);
+			if(!schema.getAttributesMap().containsKey(catAttr))
+				schema.getAttributesMap().put(catAttr, catAttr);
 		//add matched attributes
 		for(String[] couple : match.getMatchedAttributes()){
-			schema.put(couple[0], couple[1]);
+			schema.getAttributesMap().put(couple[0], couple[1]);
+			//update linkage count for the matched attributes
+			int counter = attributesLinkage.get(couple[0]+couple[1]);
+			schema.getMatchLinkage().put(couple[0], counter);
 		}
 		//add non matched attributes
 		for(String sourceAttr : invIndexes.getSourceIndex().keySet())
-			if(!schema.containsKey(sourceAttr))
-				schema.put(sourceAttr, sourceAttr);		
+			if(!schema.getAttributesMap().containsKey(sourceAttr))
+				schema.getAttributesMap().put(sourceAttr, sourceAttr);			
 	}
 
 	public static void main(String [] args){
