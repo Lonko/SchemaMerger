@@ -21,7 +21,7 @@ public class Cohordinator {
 	}	
 	
 	public Schema matchAllSourcesInCategory(List<String> orderedWebsites, String category,
-													CategoryMatcher cm, int cardinality){
+													CategoryMatcher cm, int cardinality, boolean useMI){
 		
 		Schema schema = new Schema();
 		List<String> currentMatchSources = new ArrayList<>();
@@ -30,7 +30,7 @@ public class Cohordinator {
 		//match su tutte le altre sorgenti
 		for(int i = 1; i < orderedWebsites.size(); i++){
 			currentMatchSources.add(orderedWebsites.get(i));
-			Match newMatch = cm.getMatch(currentMatchSources, category, cardinality, schema);
+			Match newMatch = cm.getMatch(currentMatchSources, category, cardinality, schema, useMI);
 		}
 		
 		return schema;
@@ -51,7 +51,12 @@ public class Cohordinator {
 //		MongoDBConnector mdbc = new MongoDBConnector("mongodb://localhost:27017", "FilteredDataset", fdc);
 //		mdbc.initializeAllCollections();
 //		mdbc.initializeCollection("Schemas");
-		String modelPath = "/home/marco/workspace/SchemaMerger/src/main/resources/classification/modelN.rda";
+		boolean useFeature = false;
+		String modelPath;
+		if(useFeature)
+			modelPath = "/home/marco/workspace/SchemaMerger/src/main/resources/classification/modelN.rda";
+		else
+			modelPath = "/home/marco/workspace/SchemaMerger/src/main/resources/classification/modelN_noC.rda";
 		RConnector r = new RConnector(modelPath);
 		r.start();
 		time =  System.currentTimeMillis() - start;
@@ -61,19 +66,25 @@ public class Cohordinator {
 		System.out.println("Created CategoryMatcher (" + (time/1000) + " s)");
 //		fdc.printTrainingSet("tsWithTuples", cm.getTrainingSetWithTuples(1000, 14000, true, 1.0));
 		List<String> websites = new ArrayList<>();
-		websites.add("vanvreedes.com");
-		websites.add("brothersmain.com");
-		websites.add("www.wettsteins.com");
-		websites.add("www.jsappliance.com");
-		websites.add("www.digiplususa.com");
-		websites.add("www.rewstv.com");
-		websites.add("www.dakotatv.com");
+//		websites.add("vanvreedes.com");
+//		websites.add("brothersmain.com");
+//		websites.add("www.wettsteins.com");
+//		websites.add("www.jsappliance.com");
+//		websites.add("www.digiplususa.com");
+//		websites.add("www.rewstv.com");
+//		websites.add("www.dakotatv.com");
+		websites.add("www.gosale.com");
+		websites.add("www.price-hunt.com");
+		websites.add("shopping.dealtime.com");
+		websites.add("www.shopping.com");
+		websites.add("www.hookbag.ca");
+		websites.add("www.buzzillions.com");
 		Cohordinator c = new Cohordinator();
 		time =  System.currentTimeMillis() - start;
 		try{
 //			Match match = cm.getMatch(websites, "tv", 0);
 //			fdc.printMatch("wettsteins(card1)", match.toCSVFormat());
-			fdc.printSchema("schema7", c.matchAllSourcesInCategory(websites, "tv", cm, 0));
+			fdc.printSchema("schema7_camera_noC", c.matchAllSourcesInCategory(websites, "camera", cm, 0, useFeature));
 		} finally {
 			r.stop();          
 		}

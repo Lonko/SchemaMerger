@@ -41,7 +41,7 @@ public class CategoryMatcher {
 		this.r = r;
 	}
 	
-	public Match getMatch(List<String> websites, String category, int cardinality, Schema schemaMatch){
+	public Match getMatch(List<String> websites, String category, int cardinality, Schema schemaMatch, boolean useMI){
 		//last website is the one to be matched with the catalog
 		String newSource = websites.remove(websites.size()-1);
 		//linked page -> pages in catalog
@@ -53,7 +53,8 @@ public class CategoryMatcher {
 		InvertedIndexesManager invIndexes = getInvertedIndexes(linkedProds, newSource);
 
 		Map<String, Integer> attributesLinkage = new HashMap<>();
-		DataFrame dataFrame = computeAttributesFeatures(linkedProds, invIndexes, cardinality, newSource, attributesLinkage);
+		DataFrame dataFrame = computeAttributesFeatures(linkedProds, invIndexes, cardinality,
+														newSource, attributesLinkage, useMI);
 		double[] predictions = r.classify(dataFrame);
 		Match match = filterMatch(dataFrame, predictions);
 		
@@ -164,7 +165,8 @@ public class CategoryMatcher {
 	}
 	
 	private DataFrame computeAttributesFeatures(List<Document[]> linkedProds, InvertedIndexesManager invIndexes,
-										int cardinality, String website, Map<String, Integer> attributesLinkage){
+										int cardinality, String website, Map<String, Integer> attributesLinkage,
+										boolean useMI){
 		
 		DataFrame df = new DataFrame();
 		Set<String> attrSet = new TreeSet<>();
@@ -198,7 +200,7 @@ public class CategoryMatcher {
 				commonProdsL.forEach(i -> linkageL.add(linkedProds.get(i)));
 				
 				attributesLinkage.put(aSource + aCatalog, linkageS.size());
-				Features features = computeFeatures(linkageS, linkageL, aCatalog, aSource);
+				Features features = computeFeatures(linkageS, linkageL, aCatalog, aSource, useMI);
 				df.addRow(features, aCatalog, aSource);
 			}
 		
@@ -217,7 +219,7 @@ public class CategoryMatcher {
 //		}
 //	}
 	
-	public Features computeFeatures(List<Document[]> sList, List<Document[]> cList, String a1, String a2){
+	public Features computeFeatures(List<Document[]> sList, List<Document[]> cList, String a1, String a2, boolean useMI){
 		
 		Features features = new Features();
 		BagsOfWordsManager sBags = new BagsOfWordsManager(a1, a2, sList);
@@ -227,8 +229,10 @@ public class CategoryMatcher {
 		features.setCategoryJSD(this.fe.getJSD(cBags));
 		features.setSourceJC(this.fe.getJC(sBags));
 		features.setCategoryJC(this.fe.getJC(cBags));
-		features.setSourceMI(this.fe.getMI(sList, a1, a2));
-		features.setCategoryMI(this.fe.getMI(cList, a1, a2));
+		if(useMI){
+			features.setSourceMI(this.fe.getMI(sList, a1, a2));
+			features.setCategoryMI(this.fe.getMI(cList, a1, a2));
+		}
 		if(features.hasNan())
 			throw new ArithmeticException("feature value is NaN");
 		
