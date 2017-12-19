@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -61,6 +62,33 @@ public class FileDataConnector {
 	
 	public JSONObject readRecordLinkage(){
 		return ((JSONObject) readJSONArray(this.rlPath).get(0));
+	}
+	
+	public Map<String, List<String>> readClonedSources(String path){
+		Scanner inputStream = null;
+		File f = new File(path);
+		Map<String, List<String>> clonedSources = new HashMap<>();
+		
+		try{
+			inputStream = new Scanner(f);
+			//skip header
+			if(inputStream.hasNext()) inputStream.next();
+			//read rows
+			while(inputStream.hasNext()){
+				String line = inputStream.next();
+				String[] sources = line.split(",");
+				List<String> clones = clonedSources.getOrDefault(sources[0], new ArrayList<>());
+				clones.add(sources[1]);
+				clonedSources.put(sources[0], clones);
+			}
+		} catch (FileNotFoundException e) {
+            e.printStackTrace();
+		} finally {
+			if (inputStream != null)
+				inputStream.close();
+		}
+		
+		return clonedSources;
 	}
 	
 	public double[][] readTrainingSet(String tsName){
@@ -118,6 +146,19 @@ public class FileDataConnector {
 	public void printMatch(String source, List<String> match){
 		String header = "AttributeSource,AttributeCatalog,Match";
 		printCSV(source, match, header);
+	}
+	
+	public void printClonedSources(String name, Map<String, List<String>> sources){
+		String header = "Source1,Source2";
+		List<String> rows = new ArrayList<>();
+		
+		for(String source : sources.keySet()){
+			List<String> clones = sources.get(source);
+			for(String clone : clones)
+				rows.add(source+","+clone);
+		}
+		
+		printCSV(name, rows, header);
 	}
 	
 	public void printSchema(String name, Schema schema){

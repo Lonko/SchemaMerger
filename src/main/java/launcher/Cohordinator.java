@@ -1,11 +1,14 @@
 package launcher;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import matcher.CategoryMatcher;
 import model.Match;
@@ -36,6 +39,39 @@ public class Cohordinator {
 		return schema;
 	}
 	
+	/* checks the schemas of the sources in the selected categories and returns the couples of sources
+	 * with schemas that have an overlap of attribute (based on their names) above 50% of the smallest 
+	 * of the two sources. */
+	public Map<String, List<String>> findClonedSources(MongoDBConnector mdbc, List<String> categories){
+		Map<String, List<String>> clonedSources = new HashMap<>();
+		Map<String, List<String>> sourceSchemas = mdbc.getSchemas(categories);
+		
+		for(String source1 : sourceSchemas.keySet()){
+			String category1 = source1.split("###")[0];
+			List<String> attributes1 = sourceSchemas.get(source1);
+			for(String source2 : sourceSchemas.keySet()){
+				if(source1.equals(source2))
+					continue;
+				String category2 = source2.split("###")[0];
+				if(! category1.equals(category2))
+					continue;
+				List<String> attributes2 = sourceSchemas.get(source2);
+				double minSize = (attributes1.size() > attributes2.size()) ? 
+									attributes2.size() :
+									attributes1.size();
+				Set<String> intersection = new HashSet<>(attributes1);
+				intersection.retainAll(attributes2);
+				if(intersection.size() >= (minSize / 2)){
+					List<String> clones = clonedSources.getOrDefault(source1, new ArrayList<>());
+					clones.add(source2);
+					clonedSources.put(source1, clones);
+				}
+			}
+		}
+		
+		return clonedSources;
+	}
+	
 	public static void main(String [] args){
 		long start = System.currentTimeMillis();
 		FileDataConnector fdc = new FileDataConnector();
@@ -49,8 +85,6 @@ public class Cohordinator {
 //		String ts = "src/main/resources/training_sets";
 //		FileDataConnector fdc = new FileDataConnector(ds, rl, ts);
 //		MongoDBConnector mdbc = new MongoDBConnector("mongodb://localhost:27017", "FilteredDataset", fdc);
-//		mdbc.initializeAllCollections();
-//		mdbc.initializeCollection("Schemas");
 		boolean useFeature = false;
 		String modelPath;
 		if(useFeature)
@@ -66,25 +100,15 @@ public class Cohordinator {
 		System.out.println("Created CategoryMatcher (" + (time/1000) + " s)");
 //		fdc.printTrainingSet("tsWithTuples", cm.getTrainingSetWithTuples(1000, 14000, true, 1.0));
 		List<String> websites = new ArrayList<>();
-//		websites.add("vanvreedes.com");
-//		websites.add("brothersmain.com");
-//		websites.add("www.wettsteins.com");
-//		websites.add("www.jsappliance.com");
-//		websites.add("www.digiplususa.com");
-//		websites.add("www.rewstv.com");
-//		websites.add("www.dakotatv.com");
-		websites.add("www.gosale.com");
-		websites.add("www.price-hunt.com");
-		websites.add("shopping.dealtime.com");
-		websites.add("www.shopping.com");
-		websites.add("www.hookbag.ca");
-		websites.add("www.buzzillions.com");
 		Cohordinator c = new Cohordinator();
 		time =  System.currentTimeMillis() - start;
+		List<String> categories = Arrays.asList("tv", "software", "camera", "toilets", "shoes", "monitor",
+												"sunglasses", "cutlery", "notebook", "headphone");
 		try{
 //			Match match = cm.getMatch(websites, "tv", 0);
 //			fdc.printMatch("wettsteins(card1)", match.toCSVFormat());
-			fdc.printSchema("schema7_camera_noC", c.matchAllSourcesInCategory(websites, "camera", cm, 0, useFeature));
+//			fdc.printSchema("schema7_camera_noC", c.matchAllSourcesInCategory(websites, "camera", cm, 0, useFeature));
+			fdc.printClonedSources("clones", c.findClonedSources(mdbc, categories));
 		} finally {
 			r.stop();          
 		}

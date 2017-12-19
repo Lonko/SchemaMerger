@@ -232,15 +232,22 @@ public class MongoDBConnector {
 		return rlList;
 	}
 	
-	/* Currently unnecessary */
-	public Map<String, Document> getSchemas(List<String[]> schemas){
-		Map<String, Document> fetchedSchemas = new TreeMap<>();
-		
-		for(String[] schema : schemas)
-			this.database.getCollection("Schemas")
-					 	 .find(Filters.and(Filters.eq("category", schema[0]), Filters.eq("website", schema[1])))
-					 	 .forEach((Document d) -> fetchedSchemas.put(schema[0]+"#"+schema[1], d));
-		
+	/* fetches the schemas of all sources that belong to one of the categories selected
+	 * doesn't consider schemas without attributes */
+	public Map<String, List<String>> getSchemas(List<String> categories){
+		Map<String, List<String>> fetchedSchemas = new TreeMap<>();
+
+		this.database.getCollection("Schemas")
+					 .find(Filters.and(Filters.in("category", categories), 
+						   Filters.ne("attributes", Collections.EMPTY_LIST)))
+					 .forEach((Document d) -> {
+						 String website = d.getString("website");
+						 String category = d.getString("category");
+						 @SuppressWarnings("unchecked")
+						 List<String> attributes = d.get("attributes", List.class);
+						 fetchedSchemas.put(category+"###"+website, attributes);
+					 });
+
 		return fetchedSchemas;
 					 	 	
 	}
