@@ -13,6 +13,7 @@ src/main/resources/classification/test_model.rda
 src/main/resources/classification/.Rhistory
 src/main/resources/tsv/
 src/main/resources/head_sources_per_category_with_linkage.txt
+src/main/resources/head_sources.json
 src/main/resources/id2category2urls.json
 target/
 .settings/
