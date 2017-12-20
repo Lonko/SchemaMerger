@@ -25,10 +25,10 @@ public class RConnector {
 	public void start(){
 		//start REngine
 		try {
-			/*for debugging
+			/*for debugging*/
 			this.eng = REngine.engineForClass("org.rosuda.REngine.JRI.JRIEngine", new String [] {"--vanilla"},
-									new REngineStdOutput(), false);*/
-			this.eng = REngine.engineForClass("org.rosuda.REngine.JRI.JRIEngine");
+									new REngineStdOutput(), false);
+//			this.eng = REngine.engineForClass("org.rosuda.REngine.JRI.JRIEngine");
 		    //load caret package
 		    this.eng.parseAndEval("library(caret)");
 		    //load classifier model
@@ -81,7 +81,7 @@ public class RConnector {
 		    //pass dataframe to REngine
 		    this.eng.assign("dataFrame", mydf);
 		    //predict matches
-		    this.eng.parseAndEval("predictions <- predict(modelN, dataFrame, type = 'prob')");
+		    this.eng.parseAndEval("predictions <- predict(model6, dataFrame, type = 'prob')");
 		    //System.out.println(eng.parseAndEval("print(predictions$true)"));
 		    predictions = this.eng.parseAndEval("predictions$true").asDoubles();
 		    

@@ -21,31 +21,43 @@ public class TrainingSetGenerator {
 
 	private MongoDBConnector mdbc;
 	private FeatureExtractor fe;
+	private Map<String, List<String>> clonedSources;
 	
-	public TrainingSetGenerator(MongoDBConnector conn, FeatureExtractor fe){
+	public TrainingSetGenerator(MongoDBConnector conn, FeatureExtractor fe, Map<String, List<String>> clSources){
 		this.mdbc = conn;
-		this.fe = new FeatureExtractor();		
+		this.fe = new FeatureExtractor();	
+		this.clonedSources = clSources;
 	}
 	
 	public List<String> getTrainingSetWithTuples(int sampleSize, int setSize, boolean useWebsite, 
-													boolean addTuples, double ratio){
+													boolean addTuples, double ratio, String category){
 		
 		Map<String, List<Tuple>> examples = new HashMap<>();
 		boolean hasEnoughNegatives = false, hasEnoughExamples = false;
-		int sizeP, sizeN;
+		int newSizeP, newSizeN, sizeP = 0, sizeN = 0, tentatives = 0;
 		
 		do{
-			List<Document> sample = this.mdbc.getRLSample(sampleSize);
-			examples = getExamples(sample, setSize, ratio);
-			sizeP = examples.get("positives").size(); 
-			sizeN = examples.get("negatives").size();
-			System.out.println(sizeP+" + "+sizeN+" = "+(sizeP+sizeN));
-			hasEnoughExamples = ((setSize * 0.95) <= (sizeP + sizeN)) && ((sizeP + sizeN) <= (setSize * 1.05));
-			hasEnoughNegatives = ( (int) Math.abs((ratio * sizeP) - sizeN )) <= 1;
-		} while (! (hasEnoughNegatives						 //the sets' size must respect the required ratio
-					&& 										 //and 
-					hasEnoughExamples));  				     //there must be approximatively 15k examples
+			List<Document> sample = this.mdbc.getRLSample(sampleSize, category);
+			Map<String, List<Tuple>> newExamples = getExamples(sample, setSize, ratio);
+			newSizeP = newExamples.get("positives").size(); 
+			newSizeN = newExamples.get("negatives").size();
+			System.out.println(newSizeP+" + "+newSizeN+" = "+(newSizeP+newSizeN));
+			hasEnoughExamples = ((setSize * 0.95) <= (newSizeP + newSizeN)) && ((newSizeP + newSizeN) <= (setSize * 1.05));
+			hasEnoughNegatives = ( newSizeP / (double) (newSizeP + newSizeN) == ratio );
+			tentatives++;
+			if((sizeP+sizeN) < (newSizeP+newSizeN) && hasEnoughNegatives){
+				examples = newExamples;
+				sizeP = newSizeP;
+				sizeN = newSizeN;
+			}
+			//don't loop too many times
+			if(tentatives == 10)
+				break;
+		} while (! (hasEnoughExamples));  				     //there must be enough examples
 		
+		//if not enough examples were found, return an empty list
+		if(examples.size() == 0) 
+			return new ArrayList<String>();
 		
 		System.out.println(examples.get("positives").size()
 				+" coppie di prodotti prese in considerazione per il training set");
@@ -65,7 +77,8 @@ public class TrainingSetGenerator {
 					t = examples.get("negatives").get(i % sizeP);
 				row = t.toRowString();
 			}
-			row += trainingSet.get(i).toString();
+			Features f = trainingSet.get(i);
+			row += f.toString()+","+f.getMatch();
 			tsRows.add(row);
 		}
 		
@@ -86,9 +99,17 @@ public class TrainingSetGenerator {
 				if(doc2 != null){
 					String website1 = doc1.getString("website");
 					String website2 = doc2.getString("website");
+					String category1 = doc1.getString("category");
+					String category2 = doc2.getString("category");
+					String source1 = category1+"###"+website1;
+					String source2 = category2+"###"+website2;
+					
+					//check if the two pages belong to cloned sources
+					if(this.clonedSources.containsKey(source1) && 
+					   this.clonedSources.get(source1).contains(source2))
+						continue;
 					
 					if(!website1.equals(website2)){
-						String category = doc1.getString("category");
 						Document attributes1 = doc1.get("spec", Document.class);
 						Document attributes2 = doc2.get("spec", Document.class);
 						Set<String> aSet1 = attributes1.keySet();
@@ -98,7 +119,7 @@ public class TrainingSetGenerator {
 						//generates positive examples
 						List<Tuple> tmpPosEx = new ArrayList<>();
 						aSet1.stream().forEach(a -> {
-							Tuple t = new Tuple(a, a, website1, website2, category);
+							Tuple t = new Tuple(a, a, website1, website2, category1);
 							tmpPosEx.add(t);
 						});
 						posExamples.addAll(tmpPosEx);
@@ -120,10 +141,13 @@ public class TrainingSetGenerator {
 		negExamples = negExamples.stream().distinct().collect(Collectors.toList());
 		Collections.shuffle(posExamples);
 		Collections.shuffle(negExamples);
-		int posSize = (int)(posExamples.size()/(1.0 + ratio));
+		int posSize = (int)(posExamples.size() *  ratio);
 		int negSize = posExamples.size() - posSize;
-		posExamples = posExamples.subList(0, posSize);
-		negExamples = negExamples.subList(0, negSize);
+		System.out.println("posExamples size = "+posExamples.size()+" --- posSize = "+posSize+" --- negSize = "+negSize);
+		if(posExamples.size() > posSize)
+			posExamples = posExamples.subList(0, posSize);
+		if(negExamples.size() > negSize)
+			negExamples = negExamples.subList(0, negSize);
 		
 		Map<String, List<Tuple>> allExamples = new HashMap<>();
 		allExamples.put("positives", posExamples);

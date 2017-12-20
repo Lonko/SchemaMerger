@@ -92,12 +92,13 @@ public class MongoDBConnector {
 		
 	}
 	
-	public List<Document> getRLSample(int size){
+	public List<Document> getRLSample(int size, String category){
 		MongoCollection<Document> collection = this.database.getCollection("Products");
 		List<Document> sample = new ArrayList<>();
+		Bson eqFilter = Filters.eq("category", category);
 		Bson neFilterS = Filters.ne("spec", new Document());
 		Bson neFilterL = Filters.ne("linkage", Collections.EMPTY_LIST);
-		Bson andFilter = Filters.and(neFilterS, neFilterL);
+		Bson andFilter = Filters.and(neFilterS, neFilterL, eqFilter);
 		Bson sampleBson = Aggregates.sample(size);
 		Bson matchBson = Aggregates.match(andFilter);
 		collection.aggregate(Arrays.asList(matchBson, sampleBson))
@@ -442,7 +443,7 @@ public class MongoDBConnector {
 	
 	private String getDomain(String url){
 		String domain = null;
-		url = url.replaceAll(" ","%20").replaceAll("\\|", "%7C");
+		url = url.replaceAll(" ","%20").replaceAll("\\|", "%7C").replaceAll("\"", "%22");
 		if(url.startsWith("http:/") || url.startsWith("https:/")){
 			if(!url.startsWith("http://") && !url.startsWith("https://")){
 				url = url.replace("http:/", "http://");

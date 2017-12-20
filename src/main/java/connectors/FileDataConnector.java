@@ -132,6 +132,11 @@ public class FileDataConnector {
 		printCSV(tsName, lines, header);
 	}
 	
+	public void printAllTrainingSets(Map<String, List<String>> trainingSets){
+		for(String cat : trainingSets.keySet())
+			printTrainingSet("1"+cat+"_ts", trainingSets.get(cat));
+	}
+	
 	public void printTrainingSet(String tsName, List<String> trainingSet){
 		String header = "Attribute1,Attribute2,Website1,Website2,Category,"
 	   					+ "JSDs,JSDw,JSDc,JCs,JCw,JCc,MIs,MIw,MIc,Match";
