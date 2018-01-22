@@ -5,12 +5,10 @@ src/main/resources/filtered_specifications/
 src/main/resources/specifications/
 src/main/resources/classification/*.csv
 src/main/resources/classification/*.json
-src/main/resources/classification/model.rda
-src/main/resources/classification/modelP.rda
-src/main/resources/classification/modelN_noC.rda
-src/main/resources/classification/modelN_noMI.rda
+src/main/resources/classification/model*.rda
 src/main/resources/classification/test_model.rda
 src/main/resources/classification/.Rhistory
+src/main/resources/classification/backup/
 src/main/resources/tsv/
 src/main/resources/head_sources_per_category_with_linkage.txt
 src/main/resources/head_sources.json
