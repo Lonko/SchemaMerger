@@ -98,7 +98,11 @@ public class MongoDBConnector {
 		Bson eqFilter = Filters.eq("category", category);
 		Bson neFilterS = Filters.ne("spec", new Document());
 		Bson neFilterL = Filters.ne("linkage", Collections.EMPTY_LIST);
-		Bson andFilter = Filters.and(neFilterS, neFilterL, eqFilter);
+		Bson andFilter;
+		if(category.equals("all"))
+			andFilter = Filters.and(neFilterS, neFilterL);
+		else
+			andFilter = Filters.and(neFilterS, neFilterL, eqFilter);
 		Bson sampleBson = Aggregates.sample(size);
 		Bson matchBson = Aggregates.match(andFilter);
 		collection.aggregate(Arrays.asList(matchBson, sampleBson))

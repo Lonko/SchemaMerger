@@ -122,6 +122,7 @@ public class CategoryMatcher {
 		Map<String, Set<Integer>> invIndCatalog = new HashMap<>();
 		Map<String, Set<Integer>> invIndLinked = new HashMap<>();
 		Map<String, Set<Integer>> invIndSource = new HashMap<>();
+		int linkedCounter = 0;
 		
 		//check all linked product pages
 		for(int i = 0; i < prods.size(); i++){
@@ -146,6 +147,7 @@ public class CategoryMatcher {
 				
 				//...and the source index if the page belongs to the source to be matched
 				if(isInSource){
+					linkedCounter++;
 					Set<Integer> indexesS = invIndSource.getOrDefault(attrL, new HashSet<Integer>());
 					indexesS.add(i);
 					invIndSource.put(attrL, indexesS);
@@ -160,6 +162,7 @@ public class CategoryMatcher {
 		System.out.println(invIndCatalog.size());
 		System.out.println(invIndLinked.size());
 		System.out.println("Attributes Source :"+invIndSource.size());
+		System.out.println("Page in linkage with the new source: "+linkedCounter);
 		
 		return invIndexes;
 	}
@@ -180,7 +183,7 @@ public class CategoryMatcher {
 				//prods in linkage between S and Catalog with the required attributes
 				Set<Integer> commonProdsS = new HashSet<>(attrS.getValue());
 				commonProdsS.retainAll(attrCatalog.getValue());
-				if(commonProdsS.size() <= 0)
+				if(commonProdsS.size() < 1)
 					continue;
 				//prods in linkage between the whole category and Catalog with the required attributes
 				Set<Integer> commonProdsL = new HashSet<>(invIndexes.getLinkedIndex().get(aSource));
