@@ -285,6 +285,12 @@ public class MongoDBConnector {
 		
 		return website;
 	}
+	
+	public void insertBatch(List<Document> docs, String collectionName){
+		MongoCollection<Document> collection = this.database.getCollection(collectionName);
+		collection.insertMany(docs);
+	}
+	
 	/* 
 	 * END PUBLIC METHODS 
 	 */

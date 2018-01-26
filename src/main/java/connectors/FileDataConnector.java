@@ -1,15 +1,18 @@
 package connectors;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Scanner;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -24,18 +27,22 @@ import org.json.simple.parser.ParseException;
 import com.cedarsoftware.util.io.JsonWriter;
 
 public class FileDataConnector {
+	
+	private static final String DEFAULT_CONFIG = "src/main/resources/config.properties";
 	private static final String DEFAULT_DATASET = "src/main/resources/specifications";
 	private static final String DEFAULT_RL = "src/main/resources/id2category2urls.json";
 	private static final String DEFAULT_TS_FOLDER = "src/main/resources/classification";
+	private String configPath;
 	private String datasetPath;
 	private String rlPath;
 	private String tsPath;
 
 	public FileDataConnector(){
-		this(DEFAULT_DATASET, DEFAULT_RL, DEFAULT_TS_FOLDER);
+		this(DEFAULT_DATASET, DEFAULT_RL, DEFAULT_TS_FOLDER, DEFAULT_CONFIG);
 	}
 	
-	public FileDataConnector(String dataset, String rl, String ts){
+	public FileDataConnector(String dataset, String rl, String ts, String config){
+		this.configPath = config;
 		this.datasetPath = dataset;
 		this.rlPath = rl;
 		this.tsPath = ts;
@@ -116,6 +123,29 @@ public class FileDataConnector {
 		}
 		
 		return trainingSet.toArray(new double[][]{});
+	}
+	
+	public Properties readConfig(){
+		Properties prop = new Properties();
+		InputStream input = null;
+		
+		try {
+			input = new FileInputStream(this.configPath);
+			prop.load(input);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally {
+			if (input != null) {
+				try {
+					input.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		
+		return prop;
 	}
 	
 	public void printTrainingSet(String tsName, double[][] trainingSet){
