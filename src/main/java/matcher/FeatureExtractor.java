@@ -10,7 +10,7 @@ import java.util.Set;
 
 import org.bson.Document;
 
-import model.BagsOfWordsManager;
+import models.BagsOfWordsManager;
 
 public class FeatureExtractor {
 	

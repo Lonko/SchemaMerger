@@ -16,8 +16,8 @@ import org.bson.Document;
 
 import connectors.FileDataConnector;
 import connectors.MongoDBConnector;
-import model.Configurations;
-import model.CurveFunction;
+import models.Configurations;
+import models.CurveFunction;
 
 public class SyntheticDatasetGenerator {
 

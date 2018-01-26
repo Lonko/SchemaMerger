@@ -9,9 +9,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import model.BagsOfWordsManager;
-import model.Features;
-import model.Tuple;
+import models.BagsOfWordsManager;
+import models.Features;
+import models.Tuple;
 
 import org.bson.Document;
 

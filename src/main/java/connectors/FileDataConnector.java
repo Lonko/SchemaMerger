@@ -17,7 +17,7 @@ import java.util.Scanner;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-import model.Schema;
+import models.Schema;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;

@@ -1,8 +1,9 @@
 package connectors;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 
-import model.DataFrame;
+import models.DataFrame;
 
 import org.rosuda.JRI.Rengine;
 import org.rosuda.REngine.REXP;
@@ -59,13 +60,15 @@ public class RConnector {
 		
 	    try {
 	    	//build dataframe columns
-		    String[] colNames = {"JSDs", "JSDc", "JCs", "JCc", "MIs", "MIc"};
+		    String[] colNames = {"JSDs", "JSDc", "JCs", "JCc"/*, "MIs", "MIc"*/};
 		    double[] colJSDs = df.getJSDs().stream().mapToDouble(Double::doubleValue).toArray();
 		    double[] colJSDc = df.getJSDc().stream().mapToDouble(Double::doubleValue).toArray();
 		    double[] colJCs = df.getJCs().stream().mapToDouble(Double::doubleValue).toArray();
 		    double[] colJCc = df.getJCc().stream().mapToDouble(Double::doubleValue).toArray();
 		    double[] colMIs = df.getMIs().stream().mapToDouble(Double::doubleValue).toArray();
 		    double[] colMIc = df.getMIc().stream().mapToDouble(Double::doubleValue).toArray();
+		    
+		    
 		    //create dataframe
 		    REXP mydf = REXP
 		    		.createDataFrame(new RList(
@@ -73,15 +76,15 @@ public class RConnector {
 		    						new REXPDouble(colJSDs),
 		    						new REXPDouble(colJSDc),
 		    						new REXPDouble(colJCs),
-		    						new REXPDouble(colJCc),
+		    						new REXPDouble(colJCc)/*,
 		    						new REXPDouble(colMIs),
-		    						new REXPDouble(colMIc)
+		    						new REXPDouble(colMIc)*/
 		    				},
 		    				colNames));
 		    //pass dataframe to REngine
 		    this.eng.assign("dataFrame", mydf);
 		    //predict matches
-		    this.eng.parseAndEval("predictions <- predict(model6, dataFrame, type = 'prob')");
+		    this.eng.parseAndEval("predictions <- predict(model1, dataFrame, type = 'prob')");
 		    //System.out.println(eng.parseAndEval("print(predictions$true)"));
 		    predictions = this.eng.parseAndEval("predictions$true").asDoubles();
 		    
@@ -89,6 +92,13 @@ public class RConnector {
 			e.printStackTrace();
 		} catch (REngineException e) {
 			e.printStackTrace();
+			try {
+				System.in.read();
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			System.out.println(df.getJSDs().toString());
 		}
 
 	    return predictions;
