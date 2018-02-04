@@ -1,4 +1,4 @@
-package models;
+package models.matcher;
 
 public class Features {
 	

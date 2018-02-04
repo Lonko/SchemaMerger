@@ -11,12 +11,12 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import models.BagsOfWordsManager;
-import models.DataFrame;
-import models.Features;
-import models.InvertedIndexesManager;
-import models.Match;
-import models.Schema;
+import models.matcher.BagsOfWordsManager;
+import models.matcher.DataFrame;
+import models.matcher.Features;
+import models.matcher.InvertedIndexesManager;
+import models.matcher.Match;
+import models.matcher.Schema;
 
 import org.bson.Document;
 

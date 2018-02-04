@@ -1,4 +1,4 @@
-package models;
+package models.matcher;
 
 import java.util.ArrayList;
 import java.util.Collections;

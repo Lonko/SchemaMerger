@@ -3,7 +3,7 @@ package connectors;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 
-import models.DataFrame;
+import models.matcher.DataFrame;
 
 import org.rosuda.JRI.Rengine;
 import org.rosuda.REngine.REXP;

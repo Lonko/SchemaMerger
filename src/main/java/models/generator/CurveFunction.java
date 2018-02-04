@@ -1,4 +1,4 @@
-package models;
+package models.generator;
 
 import java.io.IOException;
 import java.util.Random;
