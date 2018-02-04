@@ -2,7 +2,7 @@ package models.generator;
 
 import java.util.Random;
 
-public class ConstantCurveFunction implements CurveFunctionInterface {
+public class ConstantCurveFunction implements CurveFunction {
 
 	private int y0;
 	private int x0;

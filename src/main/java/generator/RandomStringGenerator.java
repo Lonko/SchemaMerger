@@ -2,7 +2,7 @@ package generator;
 
 import java.util.Random;
 
-public class RandomStringGenerator implements StringGeneratorInterface {
+public class RandomStringGenerator implements StringGenerator {
 	
 	private int sourceLength;
 	private int attributeLength;

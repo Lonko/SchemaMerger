@@ -1,6 +1,6 @@
 package models.generator;
 
-public interface CurveFunctionInterface {
+public interface CurveFunction {
 
 	public int getSampling();
 	public int getHeadThreshold();

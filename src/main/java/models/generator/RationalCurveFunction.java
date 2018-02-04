@@ -2,7 +2,7 @@ package models.generator;
 
 import java.util.Random;
 
-public class RationalCurveFunction implements CurveFunctionInterface{
+public class RationalCurveFunction implements CurveFunction{
 	
 	/* curve types:
 	 * 1 -> monotonic decreasing linear distribution

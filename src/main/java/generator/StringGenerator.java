@@ -1,6 +1,6 @@
 package generator;
 
-public interface StringGeneratorInterface {
+public interface StringGenerator {
 	
 	public String generateSourceName();
 	public String generateAttributeName();
