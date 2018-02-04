@@ -12,3 +12,10 @@
     * R_HOME
     * R_INCLUDE_DIR
     * R_SHARE_DIR
+
+## TO-DO
+* Classifier training method (currently done with a simple R script)
+* Dictionary based String generator
+* Sources creation from synthetic catalog
+* Error Rate curve for the generated sources
+* Authomatic evaluation of classification on synthetic dataset
