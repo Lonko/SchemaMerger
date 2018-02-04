@@ -15,6 +15,7 @@ public class Configurations {
 	private int[] cardinalityPercentages;
 	private String[] tokenClasses;
 	private int[] tokenPercentages;
+	private String stringPathFile = "";
 
 	public Configurations(Properties prop){
 		this.maxPages = Integer.valueOf(prop.getProperty("maxPages"));
@@ -25,22 +26,22 @@ public class Configurations {
 		this.attrCurveType = prop.getProperty("curveAttrs");
 		this.attributes = Integer.valueOf(prop.getProperty("attributes"));
 		loadPercentages(prop);
-		String[] tokens = prop.getProperty("tokens").split("-");
-		for(int i = 0; i < tokens.length; i++){
-			this.tokenPercentages[i] = Integer.valueOf(tokens[i]);
-		}
+		String path = prop.getProperty("stringFilePath");
+		if(path != null)
+			this.stringPathFile = path;
 		
 	}
 	
 	public void loadPercentages(Properties prop){
-		String[] cardClasses = prop.getProperty("carninalityClasses").split("-");
-		String[] tokensClasses = prop.getProperty("tokensClasses").split("-");
+		String[] cardClasses = prop.getProperty("carninalityClasses").split("/");
+		String[] tokensClasses = prop.getProperty("tokensClasses").split("/");
 		String[] cards = prop.getProperty("cardinality").split("-");
 		String[] tokens = prop.getProperty("tokens").split("-");
 		
 		//check if the number of classes is the same as the number of percentages
-		if(cardClasses.length != cards.length || tokensClasses.length != tokens.length)
+		if(cardClasses.length != cards.length || tokensClasses.length != tokens.length){
 			throw new IllegalArgumentException();
+		}
 
 		this.cardinalityClasses = new String[cards.length];
 		this.cardinalityPercentages = new int[cards.length];
@@ -145,5 +146,21 @@ public class Configurations {
 
 	public String[] getTokenClasses() {
 		return tokenClasses;
+	}
+
+	public String getStringPathFile() {
+		return stringPathFile;
+	}
+
+	public void setStringPathFile(String stringPathFile) {
+		this.stringPathFile = stringPathFile;
+	}
+
+	public void setCardinalityClasses(String[] cardinalityClasses) {
+		this.cardinalityClasses = cardinalityClasses;
+	}
+
+	public void setTokenClasses(String[] tokenClasses) {
+		this.tokenClasses = tokenClasses;
 	}
 }
