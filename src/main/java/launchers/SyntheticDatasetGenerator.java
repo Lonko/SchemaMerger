@@ -12,15 +12,20 @@ import connectors.MongoDBConnector;
 import models.generator.Configurations;
 
 public class SyntheticDatasetGenerator {
+	
+	private	FileDataConnector fdc;
+	private Configurations conf;
+	private MongoDBConnector mdbc;
 
 	public SyntheticDatasetGenerator(){
-		
+		this.fdc = new FileDataConnector();
+		this.conf = new Configurations(fdc.readConfig()); 
+		this.mdbc = new MongoDBConnector("mongodb://localhost:27017", "SyntheticDataset", this.fdc);
 	}	
 	
-	//generates all products and adds them to the catalogue
-	private void uploadCatalogue(List<Document> catalogue, FileDataConnector fdc){ 
-		MongoDBConnector mdbc = new MongoDBConnector("mongodb://localhost:27017", "SyntheticDataset", fdc);
-		mdbc.dropCollection("Catalogue");
+	//upload Catalogue to MongoDB in batches
+	private void uploadCatalogue(List<Document> catalogue){ 
+		this.mdbc.dropCollection("Catalogue");
 		int batchSize = 20, updatedProds = 0;		
 		
 		//each iteration is a batch of products to upload
@@ -33,20 +38,27 @@ public class SyntheticDatasetGenerator {
 				int id = updatedProds+i;
 				batch.add(catalogue.get(id));
 			}
-			mdbc.insertBatch(batch, "Catalogue");
+			this.mdbc.insertBatch(batch, "Catalogue");
 			updatedProds += size;
 		}
 	}
+
+	//generate and upload catalogue
+	public void generateCatalogue(){
+		CatalogueGenerator cg = new CatalogueGenerator(this.conf);
+		List<Document> catalogue = cg.createCatalogue();
+		uploadCatalogue(catalogue);
+	}
+	
+	public void generateSources(){
+		
+	}
+	
+	
 	
 	public static void main(String[] args){
 		SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator();
-		FileDataConnector fdc = new FileDataConnector();
-		Configurations conf = new Configurations(fdc.readConfig());
-		CatalogueGenerator cg = new CatalogueGenerator(conf);
-		
-		//generate and upload catalogue
-		List<Document> catalogue = cg.createCatalogue();
-		sdg.uploadCatalogue(catalogue, fdc);
-		
+		sdg.generateCatalogue();
+		sdg.generateSources();
 	}
 }
