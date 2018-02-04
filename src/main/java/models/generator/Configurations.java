@@ -7,9 +7,9 @@ public class Configurations {
 	private int maxPages;
 	private int minPages;
 	private int sources;
-	private int sizeCurveType;
-	private int prodCurveType;
-	private int attrCurveType;
+	private String sizeCurveType;
+	private String prodCurveType;
+	private String attrCurveType;
 	private int attributes;
 	private String[] cardinalityClasses;
 	private int[] cardinalityPercentages;
@@ -20,9 +20,9 @@ public class Configurations {
 		this.maxPages = Integer.valueOf(prop.getProperty("maxPages"));
 		this.minPages = Integer.valueOf(prop.getProperty("minPages"));
 		this.sources = Integer.valueOf(prop.getProperty("sources"));
-		this.sizeCurveType = Integer.valueOf(prop.getProperty("curveSizes"));
-		this.prodCurveType = Integer.valueOf(prop.getProperty("curveProds"));
-		this.attrCurveType = Integer.valueOf(prop.getProperty("curveAttrs"));
+		this.sizeCurveType = prop.getProperty("curveSizes");
+		this.prodCurveType = prop.getProperty("curveProds");
+		this.attrCurveType = prop.getProperty("curveAttrs");
 		this.attributes = Integer.valueOf(prop.getProperty("attributes"));
 		loadPercentages(prop);
 		String[] tokens = prop.getProperty("tokens").split("-");
@@ -91,27 +91,27 @@ public class Configurations {
 		this.sources = sources;
 	}
 	
-	public int getSizeCurveType() {
+	public String getSizeCurveType() {
 		return sizeCurveType;
 	}
 
-	public void setSizeCurveType(int sizeCurveType) {
+	public void setSizeCurveType(String sizeCurveType) {
 		this.sizeCurveType = sizeCurveType;
 	}
 
-	public int getProdCurveType() {
+	public String getProdCurveType() {
 		return prodCurveType;
 	}
 
-	public void setProdCurveType(int prodCurveType) {
+	public void setProdCurveType(String prodCurveType) {
 		this.prodCurveType = prodCurveType;
 	}
 
-	public int getAttrCurveType() {
+	public String getAttrCurveType() {
 		return attrCurveType;
 	}
 
-	public void setAttrCurveType(int attrCurveType) {
+	public void setAttrCurveType(String attrCurveType) {
 		this.attrCurveType = attrCurveType;
 	}
 
