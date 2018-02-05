@@ -9,6 +9,7 @@ public class RationalCurveFunction implements CurveFunction{
 	 * 2 -> monotonic decreasing exponential distribution
 	 * 3 -> monotonic decreasing exponential distribution (steeper)
 	 */
+	private static final double ACCEPTABLE_ERROR =  0.0005;
 	private String curveType;
 	private int y0;
 	private int x0;
@@ -81,7 +82,7 @@ public class RationalCurveFunction implements CurveFunction{
 			calculateYValues();
 			int integral = getSampling();
 			int difference = integral - prodsPages;
-			if(Math.abs(difference) < 0.01*prodsPages ){
+			if(Math.abs(difference) < ACCEPTABLE_ERROR*prodsPages ){
 				foundX0 = true;
 				compensateError(difference);
 			} else if(difference > 0){

@@ -291,6 +291,18 @@ public class MongoDBConnector {
 		collection.insertMany(docs);
 	}
 	
+	//retrieve catalogue of synthetic dataset
+	public Map<Integer, Document> getCatalogue(){
+		Map<Integer, Document> catalogue = new HashMap<>();
+		MongoCollection<Document> collection = this.database.getCollection("Catalogue");
+		collection.find().forEach((Document d)-> {
+			int id = d.getInteger("_id");
+			catalogue.put(id, d);
+		});
+		
+		return catalogue;
+	}
+	
 	/* 
 	 * END PUBLIC METHODS 
 	 */
@@ -479,8 +491,8 @@ public class MongoDBConnector {
 	 * END COLLECTION INITIALIZATION METHODS
 	 */
 	public static void main(String [] args){
-		FileDataConnector fdc = new FileDataConnector();
-		MongoDBConnector mdbc = new MongoDBConnector(fdc);
+//		FileDataConnector fdc = new FileDataConnector();
+//		MongoDBConnector mdbc = new MongoDBConnector(fdc);
 //		mdbc.initializeCollection("Products");
 //		mdbc.updateProductsRL();
 //		List<String> s = new ArrayList<String>();
