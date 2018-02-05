@@ -33,10 +33,11 @@ public class CatalogueGenerator {
 	private String[] tokenClasses;
 	private int[] tokenPercentages;
 	private Map<String, List<String>> attrValues = new HashMap<>();
+	private Map<String, String> attrFixedToken = new HashMap<>();
 	private Map<String, String> cardinalities = new HashMap<>();
 	private Map<String, String> tokens = new HashMap<>();
 
-	public CatalogueGenerator(Configurations conf){
+	public CatalogueGenerator(Configurations conf, StringGenerator sg){
 		this.maxSizeSources = conf.getMaxPages();
 		this.minSizeSources = conf.getMinPages();
 		this.nSources = conf.getSources();
@@ -51,11 +52,7 @@ public class CatalogueGenerator {
 		this.tokenClasses = conf.getTokenClasses();
 		this.tokenPercentages = conf.getTokenPercentages();
 		
-		String path = conf.getStringPathFile();
-		if(path.equals(""))
-			this.stringGenerator = new RandomStringGenerator(20, 15, 7);
-		else 
-			this.stringGenerator = new DictionaryStringGenerator(path);
+		this.stringGenerator = sg;
 	}
 	
 	private void createCurves(String typeSize, String typePLinkage){
@@ -141,15 +138,16 @@ public class CatalogueGenerator {
 			String fixedTokens = "";
 
 			for(int i = 0; i < Integer.valueOf(attrTokens[1]); i++){
-				fixedTokens += this.stringGenerator.generateAttributeValue()+" ";
+				fixedTokens += this.stringGenerator.generateAttributeToken()+" ";
 			}
+			this.attrFixedToken.put(attribute, fixedTokens.trim());
 
 			List<String> generatedValues = new ArrayList<String>();
 			Set<String> valueSet = new HashSet<>();
 			while(valueSet.size() < cardinality){
 				String value = "";
 				for(int j = 0; j < Integer.valueOf(attrTokens[0]); j++)
-					value += this.stringGenerator.generateAttributeValue()+" ";
+					value += this.stringGenerator.generateAttributeToken()+" ";
 				value += fixedTokens;
 				valueSet.add(value.trim());
 			}
@@ -195,5 +193,21 @@ public class CatalogueGenerator {
 	public List<Document> createCatalogue(){
 		prepareAttributes();
 		return generateProducts();
+	}
+
+	public CurveFunction getSizeCurve() {
+		return sizeCurve;
+	}
+
+	public CurveFunction getProductLinkageCurve() {
+		return productLinkageCurve;
+	}
+
+	public Map<String, String> getAttrFixedToken() {
+		return attrFixedToken;
+	}
+
+	public Map<String, List<String>> getAttrValues() {
+		return attrValues;
 	}
 }
