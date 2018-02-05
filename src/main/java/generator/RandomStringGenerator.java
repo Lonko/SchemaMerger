@@ -44,7 +44,7 @@ public class RandomStringGenerator implements StringGenerator {
 	}
 
 	@Override
-	public String generateAttributeValue() {
+	public String generateAttributeToken() {
 		StringBuilder sb = new StringBuilder(this.valueLength);
 		Random random = new Random();
 		for (int i = 0; i < this.valueLength; i++) {

@@ -4,5 +4,5 @@ public interface StringGenerator {
 	
 	public String generateSourceName();
 	public String generateAttributeName();
-	public String generateAttributeValue();
+	public String generateAttributeToken();
 }

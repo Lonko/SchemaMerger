@@ -19,7 +19,7 @@ public class DictionaryStringGenerator implements StringGenerator {
 	}
 
 	@Override
-	public String generateAttributeValue() {
+	public String generateAttributeToken() {
 		// TODO Auto-generated method stub
 		return null;
 	}
