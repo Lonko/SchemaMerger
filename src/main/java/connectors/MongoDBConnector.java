@@ -111,20 +111,42 @@ public class MongoDBConnector {
 		return sample;
 	}
 	
-	public List<Document> getProds(String website, String category, String attribute){
+	/* Methods to query the db for products on 3 levels of granularity:
+	 * 1 -> By Category
+	 * 2 -> By Category and Website
+	 * 3 -> By Category, Website and Attribute
+	 */
+	
+	//query only by category
+	public List<Document> getProds(String category){
+		return getProds(category, "", "");
+	}
+	
+	//query only by category and website
+	public List<Document> getProds(String category, String website){
+		return getProds(category, website, "");
+	}
+	
+	/* query by category, website and attribute.
+	 * if a parameter is an empty string, it gets ignored.
+	 */
+	public List<Document> getProds(String category, String website, String attribute){
 		MongoCollection<Document> collection = this.database.getCollection("Products");
 		List<Document> prods = new ArrayList<>();
-		Bson wFilter = Filters.eq("website", website);
 		Bson cFilter = Filters.eq("category", category);
+		Bson wFilter = Filters.eq("website", website);
 		Bson aFilter = Filters.exists("spec."+attribute, true);		
 		Bson andFilter;
 		
-		if(!website.equals("") && !category.equals(""))
-			andFilter = Filters.and(wFilter, cFilter, aFilter);
-		else if(!website.equals(""))
-			andFilter = Filters.and(wFilter, aFilter);
-		else
-			andFilter = Filters.and(cFilter, aFilter);
+		List<Bson> filters = new ArrayList<>();
+		if(!category.equals(""))
+			filters.add(cFilter);
+		if(!website.equals(""))
+			filters.add(wFilter);
+		if(!attribute.equals(""))
+			filters.add(aFilter);
+		
+		andFilter = Filters.and(filters);
 		
 		collection.find(Filters.and(andFilter))
 				  .forEach((Document d) -> prods.add(d));
@@ -291,7 +313,7 @@ public class MongoDBConnector {
 		collection.insertMany(docs);
 	}
 	
-	//retrieve catalogue of synthetic dataset
+	//retrieve catalogue of synthetic dataset in the form of map <id, product>
 	public Map<Integer, Document> getCatalogue(){
 		Map<Integer, Document> catalogue = new HashMap<>();
 		MongoCollection<Document> collection = this.database.getCollection("Catalogue");
