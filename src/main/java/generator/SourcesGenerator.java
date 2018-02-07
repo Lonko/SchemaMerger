@@ -20,6 +20,8 @@ import models.generator.RationalCurveFunction;
 
 public class SourcesGenerator {
 	
+
+	private static final int BATCH_SIZE = 100;
 	//random
 	private static final double RANDOM_ERROR_CHANCE = 0.001;
 	//for example 1 inch = 2.5 cm (affects all tokens)
@@ -414,12 +416,12 @@ public class SourcesGenerator {
 	
 	//uploads a source to mongodb
 	private void uploadSource(List<Document> productPages){
-		int batchSize = 100, uploadedProds = 0;		
+		int uploadedProds = 0;		
 		
 		//each iteration is a batch of products to upload
 		while(uploadedProds != productPages.size()){
-			int size = (productPages.size() - uploadedProds > batchSize) ? 
-								batchSize : 
+			int size = (productPages.size() - uploadedProds > BATCH_SIZE) ? 
+								BATCH_SIZE : 
 								productPages.size() - uploadedProds;
 			List<Document> batch = new ArrayList<>();
 			for(int i = 0; i < size; i++){

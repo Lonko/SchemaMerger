@@ -19,6 +19,10 @@ import models.generator.CurveFunction;
 
 public class SyntheticDatasetGenerator {
 	
+	private static final int SOURCE_NAME_LENGTH = 20;
+	private static final int ATTRIBUTE_NAME_LENGTH = 15;
+	private static final int TOKEN_LENGTH = 7;	
+	private static final int BATCH_SIZE = 100;
 	private	FileDataConnector fdc;
 	private Configurations conf;
 	private MongoDBConnector mdbc;
@@ -34,7 +38,7 @@ public class SyntheticDatasetGenerator {
 		this.mdbc = new MongoDBConnector("mongodb://localhost:27017", "SyntheticDataset", this.fdc);
 		String path = conf.getStringPathFile();
 		if(path.equals(""))
-			this.sg = new RandomStringGenerator(20, 15, 7);
+			this.sg = new RandomStringGenerator(SOURCE_NAME_LENGTH, ATTRIBUTE_NAME_LENGTH, TOKEN_LENGTH);
 		else 
 			this.sg = new DictionaryStringGenerator(path);
 	}	
@@ -42,12 +46,12 @@ public class SyntheticDatasetGenerator {
 	//upload Catalogue to MongoDB in batches
 	private void uploadCatalogue(List<Document> catalogue){ 
 		this.mdbc.dropCollection("Catalogue");
-		int batchSize = 20, uploadedProds = 0;		
+		int uploadedProds = 0;		
 		
 		//each iteration is a batch of products to upload
 		while(uploadedProds != catalogue.size()){
-			int size = (catalogue.size() - uploadedProds > batchSize) ? 
-								batchSize : 
+			int size = (catalogue.size() - uploadedProds > BATCH_SIZE) ? 
+								BATCH_SIZE : 
 								catalogue.size() - uploadedProds;
 			List<Document> batch = new ArrayList<>();
 			for(int i = 0; i < size; i++){
@@ -74,8 +78,7 @@ public class SyntheticDatasetGenerator {
 	public void generateSources(){
 		SourcesGenerator sg = new SourcesGenerator(this.mdbc, this.conf, this.sg, this.sizes, 
 													this.prodLinkage, this.attrFixedTokens, this.attrValues);
-		Map<Integer, Document> catalogue = this.mdbc.getCatalogue();
-		sg.createSources(catalogue);
+		sg.createSources();
 	}
 	
 	public int getCatalogueSize(){
