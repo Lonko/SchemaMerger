@@ -359,13 +359,12 @@ public class SourcesGenerator {
 	
 	//generates the products' pages for the source
 	private List<Document> createProductsPages(String source, Map<String, List<String>> newValues,
-												Map<Integer, List<String>> pAttrs, Map<Integer, Document> cat){
+												Map<Integer, List<String>> pAttrs, List<Document> products){
 		List<Document> prodPages = new ArrayList<>();
-		List<Integer> ids = this.source2Ids.get(source);
 		
-		for(int id : ids){
+		for(Document prod : products){
+			int id = prod.getInteger("_id");
 			List<String> attrs = pAttrs.get(id);
-			Document prod = cat.get(id);
 			Document page = new Document();
 			Document newSpecs = generateSpecs(prod.get("spec", Document.class), newValues, attrs);
 			List<String> linkage = new ArrayList<>();
@@ -387,13 +386,13 @@ public class SourcesGenerator {
 	}
 	
 	//generates all sources
-	private List<Document> createSource(String sourceName, int size, Map<Integer, Document> catalogue){
+	private List<Document> createSource(String sourceName, int size, List<Document> products){
 		List<String> schema = this.schemas.get(sourceName);
 		CurveFunction aIntLinkage = new RationalCurveFunction("2", size, schema.size(), 1);
 		Map<Integer, List<String>> prodsAttrs = getProdsAttrs(sourceName, schema, aIntLinkage);
 		Map<String, String> attrErrors = checkErrors(schema);
 		Map<String, List<String>> newValues = applyErrors(schema, attrErrors);
-		return createProductsPages(sourceName, newValues, prodsAttrs, catalogue);
+		return createProductsPages(sourceName, newValues, prodsAttrs, products);
 	}
 	
 	//assigns attributes and products to each source
@@ -432,7 +431,7 @@ public class SourcesGenerator {
 		}
 	}
 	
-	public void createSources(Map<Integer, Document> catalogue){
+	public void createSources(){
 		List<String> sourcesNames = prepareSources();
 		List<Document> sourcePages;
 		
@@ -440,7 +439,9 @@ public class SourcesGenerator {
 		for(int i = 0; i < sourcesNames.size(); i++){
 			String source = sourcesNames.get(i);
 			int size = this.sourceSizes.getYValues()[i];
-			sourcePages = createSource(source, size, catalogue);
+			List<Integer> ids = this.source2Ids.get(source);
+			List<Document> products = this.mdbc.getFromCatalogue(ids);
+			sourcePages = createSource(source, size, products);
 			uploadSource(sourcePages);
 			System.out.println("Sorgenti caricate: " + (i+1)+"\t(# pagine della corrente: "
 								+sourcePages.size()+")");

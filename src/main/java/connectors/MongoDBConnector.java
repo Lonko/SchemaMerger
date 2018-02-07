@@ -313,16 +313,14 @@ public class MongoDBConnector {
 		collection.insertMany(docs);
 	}
 	
-	//retrieve catalogue of synthetic dataset in the form of map <id, product>
-	public Map<Integer, Document> getCatalogue(){
-		Map<Integer, Document> catalogue = new HashMap<>();
+	//retrieve list of product with the provided ids from the catalogue
+	public List<Document> getFromCatalogue(List<Integer> ids){
+		List<Document> products = new ArrayList<>();
 		MongoCollection<Document> collection = this.database.getCollection("Catalogue");
-		collection.find().forEach((Document d)-> {
-			int id = d.getInteger("_id");
-			catalogue.put(id, d);
-		});
+		collection.find(Filters.in("_id", ids))
+					.forEach((Document d)-> products.add(d));
 		
-		return catalogue;
+		return products;
 	}
 	
 	/* 
