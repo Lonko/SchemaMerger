@@ -1,6 +1,5 @@
 package generator;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -166,38 +165,42 @@ public class SourcesGenerator {
 		for(int id = 0; id < prodsLinkage.length; id++){
 			Collections.shuffle(shuffledSources);
 			int linkage = prodsLinkage[id];
-			int j = 0, i = 0;
+			int j = 0;
 			/* add it to the ids lists of n random sources
 			 * with n given by the yValue on the curve for the product linkage
 			 * while checking not to go above the source size
 			 */
 			while(j < linkage){
-				if(i == shuffledSources.size()){
+				//if there are still sources with space available
+				if(j != shuffledSources.size()){
+					String source = shuffledSources.get(j);
+					List<Integer> ids = this.source2Ids.getOrDefault(source, new ArrayList<Integer>());
+					int index = sourcesNames.indexOf(source);
+					//skip if this source is full
+					if(ids.size() == sSizes[index]){
+						//remove source from list of available sources and continue
+						shuffledSources.remove(source);
+						continue;
+					}
+					List<String> sources = this.id2Sources.getOrDefault(id, new ArrayList<String>());
+					sources.add(source);
+					ids.add(id);
+					//put lists in maps in case they were created for the first time during this iteration
+					this.id2Sources.put(id, sources);
+					this.source2Ids.put(source, ids);
+					j++;
+				} else {
+					/* if all sources (without the page relative to this product) are full,
+					 * try replacing another product's page
+					 */
 					if(tryReplace(id, sSizes, sourcesNames)){
 						j++;
 						continue;
 					}else{
-						System.err.println("IMPOSSIBLE TO PLACE PRODUCT PAGE");
-						try {
-							System.in.read();
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
+						throw new IllegalStateException("A problem has occurred in the assignment of products' pages");
 					}
-				}					
-				String source = shuffledSources.get(i);
-				List<Integer> ids = this.source2Ids.getOrDefault(source, new ArrayList<Integer>());
-				int index = sourcesNames.indexOf(source);
-				//skip if this source is full
-				if(ids.size() == sSizes[index]){
-					shuffledSources.remove(source);
-					continue;
 				}
-				List<String> sources = this.id2Sources.getOrDefault(id, new ArrayList<String>());
-				sources.add(source);
-				ids.add(id);
-				i++;
-				j++;
+				
 			}
 		}
 	}
