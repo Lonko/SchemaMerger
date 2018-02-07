@@ -194,8 +194,6 @@ public class SourcesGenerator {
 				List<String> sources = this.id2Sources.getOrDefault(id, new ArrayList<String>());
 				sources.add(source);
 				ids.add(id);
-				this.source2Ids.put(source, ids);
-				this.id2Sources.put(id, sources);
 				i++;
 				j++;
 			}
@@ -372,7 +370,8 @@ public class SourcesGenerator {
 			Document newSpecs = generateSpecs(prod.get("spec", Document.class), newValues, attrs);
 			List<String> linkage = new ArrayList<>();
 			for(String rlSource : this.id2Sources.get(id))
-				linkage.add(rlSource+"/"+id+"/");
+				if(!rlSource.equals(source))
+					linkage.add(rlSource+"/"+id+"/");
 			
 			page.append("category", "fakeCategory");
 			page.append("url", source+"/"+id+"/");
