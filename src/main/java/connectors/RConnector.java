@@ -5,7 +5,6 @@ import java.lang.reflect.InvocationTargetException;
 
 import models.matcher.DataFrame;
 
-import org.rosuda.JRI.Rengine;
 import org.rosuda.REngine.REXP;
 import org.rosuda.REngine.REXPDouble;
 import org.rosuda.REngine.REXPMismatchException;
@@ -16,11 +15,9 @@ import org.rosuda.REngine.RList;
 
 public class RConnector {
 	
-	private String modelPath;
 	private REngine eng = null;
 	
-	public RConnector(String modelPath){
-		this.modelPath = modelPath;
+	public RConnector(){
 	}
 	
 	public void start(){
@@ -32,8 +29,6 @@ public class RConnector {
 //			this.eng = REngine.engineForClass("org.rosuda.REngine.JRI.JRIEngine");
 		    //load caret package
 		    this.eng.parseAndEval("library(caret)");
-		    //load classifier model
-		    this.eng.parseAndEval("load('"+this.modelPath+"')");
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		} catch (NoSuchMethodException e) {
@@ -53,6 +48,40 @@ public class RConnector {
 	public void stop(){
 		if(this.eng != null)
 			this.eng.close();
+	}
+	
+	public void loadModel(String modelPath){
+	    //load classifier model
+	    try {
+			this.eng.parseAndEval("load('"+modelPath+"')");
+		} catch (REngineException | REXPMismatchException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	//generates classifier model
+	public void train(String tsPath, String modelPath){
+		try {
+			//read training set
+			this.eng.parseAndEval("data <- read.csv(\""+tsPath+"\",header=TRUE)");
+			this.eng.parseAndEval("data$Match <- as.factor(data$Match)");
+			this.eng.parseAndEval("levels(data$Match) <- c(\"false\", \"true\")");
+			this.eng.parseAndEval("data$Match <- factor(data$Match, levels=c(\"true\",\"false\"))");
+			//remove unnecessary columns
+			this.eng.parseAndEval("dataSub <- subset(data, select=-c(Attribute1, Attribute2, Website1,"
+					+ " Website2, Category, JSDw, JCw, MIw))");
+			//trainControl setup
+			this.eng.parseAndEval("tc <- trainControl(method=\"repeatedcv\", number=10, repeats=50, classProbs=TRUE,"
+					+ " savePredictions=TRUE, summaryFunction=twoClassSummary)");
+			//training: logistic regression with Area under ROC as metric
+			this.eng.parseAndEval("modelClassifier <- train(Match~., data=dataSub, trControl=tc, method=\"glm\","
+					+ " family=binomial(link=\"logit\"), metric=\"ROC\")");
+			//save model to file to avoid retraining
+			this.eng.parseAndEval("save(modelClassifier, file = \""+modelPath+"\")");
+			
+		} catch (REngineException | REXPMismatchException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public double[] classify(DataFrame df){
@@ -84,7 +113,7 @@ public class RConnector {
 		    //pass dataframe to REngine
 		    this.eng.assign("dataFrame", mydf);
 		    //predict matches
-		    this.eng.parseAndEval("predictions <- predict(model1, dataFrame, type = 'prob')");
+		    this.eng.parseAndEval("predictions <- predict(modelClassifier, dataFrame, type = 'prob')");
 		    //System.out.println(eng.parseAndEval("print(predictions$true)"));
 		    predictions = this.eng.parseAndEval("predictions$true").asDoubles();
 		    
@@ -103,29 +132,5 @@ public class RConnector {
 
 	    return predictions;
 	}
-	/* @TODO
-	public void train(){
-		String columns = "AttributeSource, AttributeCatalog, JSDw, JCw, MIw, Match";
-	    // new R-engine
-	    Rengine re=new Rengine (new String [] {"--vanilla"}, false, null);
-	    if (!re.waitForR())
-	    {
-	      System.out.println ("Cannot load R");
-	      return;
-	    }
-
-	    // print a random number from uniform distribution
-	    re.eval ("library(caret)");
-	    re.eval ("load('my_model.rda')");
-	    re.eval ("matchData <- read.csv('dataFrame.csv',header=TRUE)");
-	    re.eval ("dataFrame <- subset(matchData, select=-c("+columns+"))");
-	    re.eval ("predictions <- predict(model1, dataFrame, type = 'prob')");
-	    re.eval ("newFrame <- cbind(matchData, predictions$true)");
-	    re.eval ("colnames(newFrame)[13] <- 'prob'");
-	    re.eval ("newFrame <- newFrame[(newFrame[,13]>=0.5),]");
-
-	    // done...
-	    re.end();
-	}*/
 	
 }
