@@ -1,6 +1,6 @@
 # SchemaMerger
 
-## Requirements
+## Requirements for Classification
 
 * src/main/resources should countain a folder with the dataset; the dataset should contain a folder for each website, each containing one file per product category. the folder specification_example contains an example of the json file.
 * src/main/resources should contain a file id2category2urls.json that tracks the record linkage between product pages; an example file is provided in the resources folder.
@@ -12,9 +12,12 @@
     * R_HOME
     * R_INCLUDE_DIR
     * R_SHARE_DIR
+    
+## Requirements for Dataset Generation
+   ...
 
 ## TO-DO
-* [ ] Classifier training method (currently done with a simple R script)
+* [x] Classifier training method (currently done with a simple R script)
 * [ ] Dictionary based String generator
 * [x] Sources creation from synthetic catalog  :exclamation:
 * [ ] Error Rate curve for the generated sources
