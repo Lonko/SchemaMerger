@@ -16,6 +16,10 @@ public class Configurations {
 	private String[] tokenClasses;
 	private int[] tokenPercentages;
 	private String stringPathFile = "";
+	private double randomErrorChance;
+	private double differentFormatChance;
+	private double differentRepresentationChance;
+	private double linkageErrorChance;
 
 	public Configurations(Properties prop){
 		this.maxPages = Integer.valueOf(prop.getProperty("maxPages"));
@@ -25,6 +29,10 @@ public class Configurations {
 		this.prodCurveType = prop.getProperty("curveProds");
 		this.attrCurveType = prop.getProperty("curveAttrs");
 		this.attributes = Integer.valueOf(prop.getProperty("attributes"));
+		this.randomErrorChance = Double.valueOf(prop.getProperty("randomError"));
+		this.differentFormatChance = Double.valueOf(prop.getProperty("formatChance"));
+		this.differentRepresentationChance = Double.valueOf(prop.getProperty("representationChance"));
+		this.linkageErrorChance = Double.valueOf(prop.getProperty("linkageError"));
 		loadPercentages(prop);
 		String path = prop.getProperty("stringFilePath");
 		if(path != null)
@@ -162,5 +170,38 @@ public class Configurations {
 
 	public void setTokenClasses(String[] tokenClasses) {
 		this.tokenClasses = tokenClasses;
+	}
+
+	public double getRandomErrorChance() {
+		return randomErrorChance;
+	}
+
+	public void setRandomErrorChance(double randomErrorChance) {
+		this.randomErrorChance = randomErrorChance;
+	}
+
+	public double getDifferentFormatChance() {
+		return differentFormatChance;
+	}
+
+	public void setDifferentFormatChance(double differentFormatChance) {
+		this.differentFormatChance = differentFormatChance;
+	}
+
+	public double getDifferentRepresentationChance() {
+		return differentRepresentationChance;
+	}
+
+	public void setDifferentRepresentationChance(
+			double differentRepresentationChance) {
+		this.differentRepresentationChance = differentRepresentationChance;
+	}
+
+	public double getLinkageErrorChance() {
+		return linkageErrorChance;
+	}
+
+	public void setLinkageErrorChance(double linkageErrorChance) {
+		this.linkageErrorChance = linkageErrorChance;
 	}
 }
