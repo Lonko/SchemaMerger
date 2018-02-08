@@ -22,11 +22,13 @@ public class SourcesGenerator {
 
 	private static final int BATCH_SIZE = 100;
 	//random
-	private static final double RANDOM_ERROR_CHANCE = 0.001;
+	private double randomError;
 	//for example 1 inch = 2.5 cm (affects all tokens)
-	private static final double DIFFERENT_FORMAT_CHANCE = 0.05;
+	private double differentFormat;
 	//for example 1 cm = 1 centimeter (affects only fixed tokens)
-	private static final double DIFFERENT_REPRESENTATION_CHANCE = 0.05;
+	private double differentRepresentation;
+	//probability of missing linkage url
+	private double linkageError;
 	private MongoDBConnector mdbc;
 	private StringGenerator stringGenerator;
 	private CurveFunction aExtLinkageCurve;
@@ -60,6 +62,11 @@ public class SourcesGenerator {
 		this.values = values;
 		this.sourceSizes = sizes;
 		this.productLinkage = prods;
+		this.randomError = conf.getRandomErrorChance();
+		this.differentFormat = conf.getDifferentFormatChance();
+		this.differentRepresentation = conf.getDifferentRepresentationChance();
+		this.linkageError = conf.getLinkageErrorChance();
+		
 		if(curveType.equals("0"))
 			this.aExtLinkageCurve = new ConstantCurveFunction(this.nSources, this.nAttributes, 1);
 		else
@@ -273,9 +280,9 @@ public class SourcesGenerator {
 		
 		for(String attribute : schema){
 			double chance = rand.nextDouble();
-			if(chance <= DIFFERENT_FORMAT_CHANCE)
+			if(chance <= this.differentFormat)
 				errors.put(attribute, "format");
-			else if(chance <= DIFFERENT_REPRESENTATION_CHANCE)
+			else if(chance <= this.differentRepresentation + this.differentFormat)
 				errors.put(attribute, "representation");
 			else
 				errors.put(attribute, "none");
@@ -351,7 +358,7 @@ public class SourcesGenerator {
 			//random error
 			for(String token : newValue.split(" ")){
 				double chance = rand.nextDouble();
-				if(chance <= RANDOM_ERROR_CHANCE)
+				if(chance <= this.randomError)
 					tokens.add(this.stringGenerator.generateAttributeToken());
 				else
 					tokens.add(token);				
@@ -366,6 +373,7 @@ public class SourcesGenerator {
 	private List<Document> createProductsPages(String source, Map<String, List<String>> newValues,
 												Map<Integer, List<String>> pAttrs, List<Document> products){
 		List<Document> prodPages = new ArrayList<>();
+		Random rnd = new Random();
 		
 		for(Document prod : products){
 			int id = prod.getInteger("_id");
@@ -374,8 +382,19 @@ public class SourcesGenerator {
 			Document newSpecs = generateSpecs(prod.get("spec", Document.class), newValues, attrs);
 			List<String> linkage = new ArrayList<>();
 			for(String rlSource : this.id2Sources.get(id))
-				if(!rlSource.equals(source))
-					linkage.add(rlSource+"/"+id+"/");
+				if(!rlSource.equals(source)){
+					double error = rnd.nextDouble();
+					//no error
+					if(error > 2*this.linkageError)
+						linkage.add(rlSource+"/"+id+"/");
+					//add wrong linkage url
+					else if(error > this.linkageError){
+						int wrongId = rnd.nextInt(this.id2Sources.size());
+						int wrongSourceId = rnd.nextInt(this.id2Sources.get(wrongId).size());
+						linkage.add(this.id2Sources.get(wrongSourceId)+"/"+wrongId+"/");
+					}
+					//if (rnd <= this.linkageError) do nothing -> missing linkage
+				}
 			
 			page.append("category", "fakeCategory");
 			page.append("url", source+"/"+id+"/");
