@@ -29,9 +29,9 @@ public class CatalogueGenerator {
 	private CurveFunction sizeCurve;
 	private CurveFunction productLinkageCurve;
 	private String[] cardClasses;
-	private int[] cardPercentages;
+	private double[] cardPercentages;
 	private String[] tokenClasses;
-	private int[] tokenPercentages;
+	private double[] tokenPercentages;
 	private Map<String, List<String>> attrValues = new HashMap<>();
 	private Map<String, String> attrFixedToken = new HashMap<>();
 	private Map<String, String> cardinalities = new HashMap<>();
@@ -82,7 +82,7 @@ public class CatalogueGenerator {
 		Collections.shuffle(indexes);
 		
 		String[] classes;
-		int[] percentages;
+		double[] percentages;
 		Map<String, String> attrsClasses;
 		if(classType.equals("cardinality")){
 			classes = this.cardClasses;
@@ -97,7 +97,7 @@ public class CatalogueGenerator {
 		int[] partitions = new int[percentages.length];
 		int acc = 0;
 		for(int i = 0; i < percentages.length-1; i++){
-			int partition = percentages[i] * attrs.size() / 100;
+			int partition = (int) (percentages[i] * attrs.size() / 100);
 			partitions[i] = partition;
 			acc += partition;
 		}
