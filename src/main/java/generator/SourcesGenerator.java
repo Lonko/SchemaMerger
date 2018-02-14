@@ -36,19 +36,25 @@ public class SourcesGenerator {
 	private CurveFunction productLinkage;
 	private int nSources;
 	private int nAttributes;
-	private Map<String, List<String>> schemas = new HashMap<>();
 	//Map <Source, ids of products in source>
 	private Map<String, List<Integer>> source2Ids = new HashMap<>();
 	//Map <id, Sources in which it appears>
 	private Map<Integer, List<String>> id2Sources = new HashMap<>();
-	//Map <Attribute, fixed token>
-	private Map<String, String> fixedTokens = new HashMap<>();
-	//Map <Attribute, values>
-	private Map<String, List<String>> values = new HashMap<>();
 	//list of "head" attribute (in terms of number of sources in which they appear)
 	private List<String> headAttributes = new ArrayList<>();
 	//list of "tail" attribute (in terms of number of sources in which they appear)
 	private List<String> tailAttributes = new ArrayList<>();
+	/*
+	 * Maps to replace by implementing Attribute objects
+	 */
+	//Map <Attribute, schema>
+	private Map<String, List<String>> schemas = new HashMap<>();
+	//Map <Attribute, linkage>
+	private Map<String, Integer> linkage = new HashMap<>();
+	//Map <Attribute, fixed token>
+	private Map<String, String> fixedTokens = new HashMap<>();
+	//Map <Attribute, values>
+	private Map<String, List<String>> values = new HashMap<>();
 	
 	public SourcesGenerator(MongoDBConnector mdbc, Configurations conf, StringGenerator sg, 
 							CurveFunction sizes, CurveFunction prods, Map<String, String> fixedTokens,
@@ -87,6 +93,7 @@ public class SourcesGenerator {
 		for(int i = 0; i < attributes.size(); i++){
 			String attribute = attributes.get(i);
 			int linkage = attrLinkage[i];
+			this.linkage.put(attribute, linkage);
 			Collections.shuffle(shuffledSources);
 			//mark attribute as head or tail
 			if(i <= headThreshold)
@@ -179,7 +186,7 @@ public class SourcesGenerator {
 			 */
 			while(j < linkage){
 				//if there are still sources with space available
-				if(j != shuffledSources.size()){
+				if(j < shuffledSources.size()){
 					String source = shuffledSources.get(j);
 					List<Integer> ids = this.source2Ids.getOrDefault(source, new ArrayList<Integer>());
 					int index = sourcesNames.indexOf(source);
@@ -389,9 +396,9 @@ public class SourcesGenerator {
 						linkage.add(rlSource+"/"+id+"/");
 					//add wrong linkage url
 					else if(error > this.linkageError){
-						int wrongId = rnd.nextInt(this.id2Sources.size());
-						int wrongSourceId = rnd.nextInt(this.id2Sources.get(wrongId).size());
-						linkage.add(this.id2Sources.get(wrongSourceId)+"/"+wrongId+"/");
+						int wrongProdId = rnd.nextInt(this.id2Sources.size());
+						int wrongSourceId = rnd.nextInt(this.id2Sources.get(wrongProdId).size());
+						linkage.add(this.id2Sources.get(wrongSourceId)+"/"+wrongProdId+"/");
 					}
 					//if (rnd <= this.linkageError) do nothing -> missing linkage
 				}
@@ -419,23 +426,6 @@ public class SourcesGenerator {
 		return createProductsPages(sourceName, newValues, prodsAttrs, products);
 	}
 	
-	//assigns attributes and products to each source
-	private List<String> prepareSources(){
-		//generate sources ids
-		Set<String> sourceNamesSet = new HashSet<>();
-		List<String> sourcesNames = new ArrayList<>();
-
-		while(sourceNamesSet.size() < this.nSources){
-			sourceNamesSet.add("www."+this.stringGenerator.generateSourceName()+".com");
-		}
-		sourcesNames.addAll(sourceNamesSet);
-		
-		assignAttributes(sourcesNames);
-		assignProducts(sourcesNames);
-		
-		return sourcesNames;
-	}
-	
 	//uploads a source to mongodb
 	private void uploadSource(List<Document> productPages){
 		int uploadedProds = 0;		
@@ -455,10 +445,29 @@ public class SourcesGenerator {
 		}
 	}
 	
-	public void createSources(){
-		List<String> sourcesNames = prepareSources();
+	
+	//assigns attributes and products to each source
+	public List<String> prepareSources(){
+		//generate sources ids
+		Set<String> sourceNamesSet = new HashSet<>();
+		List<String> sourcesNames = new ArrayList<>();
+
+		while(sourceNamesSet.size() < this.nSources){
+			sourceNamesSet.add("www."+this.stringGenerator.generateSourceName()+".com");
+		}
+		sourcesNames.addAll(sourceNamesSet);
+		
+		assignAttributes(sourcesNames);
+		assignProducts(sourcesNames);
+		
+		return sourcesNames;
+	}
+	
+	//generates the complete sources and returns attributes' linkage info
+	public Map<String, Integer> createSources(List<String> sourcesNames){
 		List<Document> sourcePages;
 		
+		//generates sources
 		this.mdbc.dropCollection("Products");
 		for(int i = 0; i < sourcesNames.size(); i++){
 			String source = sourcesNames.get(i);
@@ -470,6 +479,8 @@ public class SourcesGenerator {
 			System.out.println("Sorgenti caricate: " + (i+1)+"\t(# pagine della corrente: "
 								+sourcePages.size()+")");
 		}
+		
+		return this.linkage;		
 	}
 
 }
