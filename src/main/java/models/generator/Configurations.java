@@ -12,9 +12,9 @@ public class Configurations {
 	private String attrCurveType;
 	private int attributes;
 	private String[] cardinalityClasses;
-	private int[] cardinalityPercentages;
+	private double[] cardinalityPercentages;
 	private String[] tokenClasses;
-	private int[] tokenPercentages;
+	private double[] tokenPercentages;
 	private String stringPathFile = "";
 	private double randomErrorChance;
 	private double differentFormatChance;
@@ -43,37 +43,41 @@ public class Configurations {
 	public void loadPercentages(Properties prop){
 		String[] cardClasses = prop.getProperty("carninalityClasses").split("/");
 		String[] tokensClasses = prop.getProperty("tokensClasses").split("/");
-		String[] cards = prop.getProperty("cardinality").split("-");
-		String[] tokens = prop.getProperty("tokens").split("-");
+		String[] cards = prop.getProperty("cardinality").split("/");
+		String[] tokens = prop.getProperty("tokens").split("/");
 		
 		//check if the number of classes is the same as the number of percentages
 		if(cardClasses.length != cards.length || tokensClasses.length != tokens.length){
-			throw new IllegalArgumentException();
+			throw new IllegalArgumentException("Card Classes: "+cardClasses.length
+												+"\tPercentages :"+cards.length+"\n"
+												+"Token Classes: "+tokensClasses.length
+												+"\tPercentages : "+tokens.length);
 		}
 
 		this.cardinalityClasses = new String[cards.length];
-		this.cardinalityPercentages = new int[cards.length];
+		this.cardinalityPercentages = new double[cards.length];
 		this.tokenClasses = new String[tokens.length];
-		this.tokenPercentages = new int[tokens.length];
+		this.tokenPercentages = new double[tokens.length];
 		
 		//load cardinality classes and percentages
-		int totalCard = 0;
+		double totalCard = 0;
 		for(int i = 0; i < cards.length; i++){
 			this.cardinalityClasses[i] = cardClasses[i];
-			this.cardinalityPercentages[i] = Integer.valueOf(cards[i]);
+			this.cardinalityPercentages[i] = Double.valueOf(cards[i]);
 			totalCard += this.cardinalityPercentages[i];
 		}
 		
 		//load tokens classes and percentages
-		int totalTokens = 0;
+		double totalTokens = 0;
 		for(int i = 0; i < tokens.length; i++){
 			this.tokenClasses[i] = tokensClasses[i];
-			this.tokenPercentages[i] = Integer.valueOf(tokens[i]);
+			this.tokenPercentages[i] = Double.valueOf(tokens[i]);
 			totalTokens += this.tokenPercentages[i];
 		}
 		
 		if(totalCard != 100 || totalTokens != 100)
-			throw new IllegalArgumentException();
+			throw new IllegalArgumentException("Cardinality Total: "+totalCard+"\n"
+												+"Token Total: "+totalTokens);
 	}
 
 	public int getMaxPages() {
@@ -132,19 +136,19 @@ public class Configurations {
 		this.attributes = attributes;
 	}
 
-	public int[] getCardinalityPercentages() {
+	public double[] getCardinalityPercentages() {
 		return cardinalityPercentages;
 	}
 
-	public void setCardinalityPercentages(int[] cardinalityPercentages) {
+	public void setCardinalityPercentages(double[] cardinalityPercentages) {
 		this.cardinalityPercentages = cardinalityPercentages;
 	}
 
-	public int[] getTokenPercentages() {
+	public double[] getTokenPercentages() {
 		return tokenPercentages;
 	}
 
-	public void setTokenPercentages(int[] tokenPercentages) {
+	public void setTokenPercentages(double[] tokenPercentages) {
 		this.tokenPercentages = tokenPercentages;
 	}
 
