@@ -41,6 +41,12 @@ public class FileDataConnector {
 		this(DEFAULT_DATASET, DEFAULT_RL, DEFAULT_TS_FOLDER, DEFAULT_CONFIG);
 	}
 	
+	//when using the synthetic dataset
+	public FileDataConnector(String ts, String config){
+		this.tsPath = ts;
+		this.configPath = config;
+	}
+	
 	public FileDataConnector(String dataset, String rl, String ts, String config){
 		this.configPath = config;
 		this.datasetPath = dataset;
@@ -196,7 +202,8 @@ public class FileDataConnector {
 		printCSV(name, rows, header);
 	}
 	
-	public void printSchema(String name, Schema schema){
+	//prints attributes' clusters
+	public void printMatchSchema(String name, Schema schema){
 		PrintWriter writer = null;
 		JSONObject json = new JSONObject();
 		int clusterID = 0;
@@ -215,7 +222,9 @@ public class FileDataConnector {
 				for(String attr : cluster){
 					if(schema.getMatchLinkage().containsKey(attr) ||
 					   schema.getTotalLinkage().containsKey(attr)){
+						//linkage on source
 						int matchLinkage = schema.getMatchLinkage().getOrDefault(attr, 0);
+						//linkage on category
 						int totLinkage = schema.getTotalLinkage().get(attr);
 						String row = attr.replaceAll(",", "#;#")+","+matchLinkage+","+totLinkage;
 						csvRows.add(row);
@@ -236,6 +245,51 @@ public class FileDataConnector {
 				writer.close();
 		}
 	}
+	
+
+	/*
+	 * Not used
+	 * 
+	 * 
+	public void printSyntheticDatasetLinkage(Map<String, Integer> linkageInfo){
+		String header = "Attribute,Linkage";
+		List<String> csvRows = new ArrayList<>();
+		
+		for(String attribute : linkageInfo.keySet()){
+			int linkage = linkageInfo.get(attribute);
+			csvRows.add(attribute+","+linkage);
+		}
+		
+		printCSV("attribute_linkage.csv", csvRows, header);
+	}
+	
+	public Map<String, Integer> readSyntheticDatasetLinkage(){
+		Scanner inputStream = null;
+		String path = this.tsPath+"/attribute_linkage.csv";
+		File linkageFile = new File(path);
+		Map<String, Integer> linkage = new HashMap<>();
+		
+		try{
+			inputStream = new Scanner(linkageFile);
+			//skip header
+			if(inputStream.hasNext()) inputStream.next();
+			//read rows
+			while(inputStream.hasNext()){
+	             String[] line = inputStream.next().split(",");
+	             linkage.put(line[0], Integer.valueOf(line[1]));
+			}
+		} catch (FileNotFoundException e) {
+            e.printStackTrace();
+		} finally {
+			if (inputStream != null)
+				inputStream.close();
+		}
+		
+		return linkage;
+	}
+	*
+	*
+	*/
 	
 	private void printCSV(String name, List<String> rows, String header){
 		PrintWriter writer = null;
