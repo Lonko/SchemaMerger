@@ -31,6 +31,8 @@ public class SyntheticDatasetGenerator {
 	private CurveFunction prodLinkage;
 	private Map<String, String> attrFixedTokens;
 	private Map<String, List<String>> attrValues;
+	private List<String> sources;
+	private Map<String, Integer> attrLinkage;
 
 	public SyntheticDatasetGenerator(){
 		this.fdc = new FileDataConnector();
@@ -78,7 +80,8 @@ public class SyntheticDatasetGenerator {
 	public void generateSources(){
 		SourcesGenerator sg = new SourcesGenerator(this.mdbc, this.conf, this.sg, this.sizes, 
 													this.prodLinkage, this.attrFixedTokens, this.attrValues);
-		sg.createSources();
+		this.sources = sg.prepareSources();
+		this.attrLinkage = sg.createSources(this.sources);
 	}
 	
 	public int getCatalogueSize(){
@@ -87,6 +90,14 @@ public class SyntheticDatasetGenerator {
 	
 	public int getDatasetSize(){
 		return this.prodLinkage.getSampling();
+	}
+
+	public List<String> getSources() {
+		return sources;
+	}
+
+	public Map<String, Integer> getAttrLinkage() {
+		return attrLinkage;
 	}
 	
 	public static void main(String[] args){
@@ -99,13 +110,18 @@ public class SyntheticDatasetGenerator {
 		long end = System.currentTimeMillis();
 		long timeForCatalogue = middle - start;
 		long timeForDataset = end - middle;
-		long totalTime = end - start;
+		long catalogueTime = timeForCatalogue/1000;
+		long datasetTime = timeForDataset/1000;
+		long totalTime = (end - start)/1000;
 		
 		System.out.println("Prodotti nel catalogo: "+sdg.getCatalogueSize());
 		System.out.println("Prodotti nel dataset: "+sdg.getDatasetSize());
-		System.out.println("Tempo di generazione del Catalogo: "+(timeForCatalogue/1000)+"s");
-		System.out.println("Tempo di generazione del Dataset: "+(timeForDataset/1000)+"s");
-		System.out.println("Tempo di esecuzione totale: "+(totalTime/1000)+"s");
+		System.out.println("Tempo di generazione del Catalogo: "+(catalogueTime/60)+" min "
+							+(catalogueTime%60)+" sec");
+		System.out.println("Tempo di generazione del Dataset: "+(datasetTime/60)+" min "
+							+(datasetTime%60)+" s ");
+		System.out.println("Tempo di esecuzione totale: "+(totalTime/60)+" min "
+							+(totalTime%60)+" s ");
 		
 	}
 }
