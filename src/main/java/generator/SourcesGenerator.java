@@ -392,9 +392,9 @@ public class SourcesGenerator {
 				if(!rlSource.equals(source)){
 					double error = rnd.nextDouble();
 					//no error
-					if(error > 2*this.linkageError)
+					if(error > 1.1*this.linkageError)
 						linkage.add(rlSource+"/"+id+"/");
-					//add wrong linkage url
+					//add wrong linkage url (percentage Error = linkageError/10)
 					else if(error > this.linkageError){
 						int wrongProdId = rnd.nextInt(this.id2Sources.size());
 						int wrongSourceId = rnd.nextInt(this.id2Sources.get(wrongProdId).size());
@@ -479,6 +479,8 @@ public class SourcesGenerator {
 			System.out.println("Sorgenti caricate: " + (i+1)+"\t(# pagine della corrente: "
 								+sourcePages.size()+")");
 		}
+		
+		this.mdbc.addSyntheticProductsIndexes();
 		
 		return this.linkage;		
 	}
