@@ -24,7 +24,7 @@ public class FeatureExtractor {
 		Map<String, Double> distProbM = new HashMap<>();
 		Set<String> allWords = new HashSet<>(bags.getCatalogBagOfWords());
 		allWords.addAll(bags.getSourceBagOfWords());
-		int lM = allWords.size();
+//		int lM = allWords.size();
 		
 		//get frequency of all words
 		bags.getCatalogBagOfWords().forEach(word -> {
@@ -37,8 +37,8 @@ public class FeatureExtractor {
 		});
 		//calculate probability distribuition
 		allWords.forEach(word -> {
-			Double pCat = distProbCatalog.getOrDefault(word, 0.0) / lM;
-			Double pSource = distProbSource.getOrDefault(word, 0.0) / lM;
+			Double pCat = distProbCatalog.getOrDefault(word, 0.0) / distProbCatalog.size();
+			Double pSource = distProbSource.getOrDefault(word, 0.0) / distProbSource.size();
 			Double pM = (pCat + pSource) / 2;
 			distProbCatalog.put(word, pCat);
 			distProbSource.put(word, pSource);
