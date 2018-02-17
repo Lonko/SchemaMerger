@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.bson.Document;
@@ -119,36 +120,40 @@ public class MongoDBConnector {
 	
 	//query only by category
 	public List<Document> getProds(String category){
-		return getProds(category, "", "");
+		return getProds(category, "", "", "");
 	}
 	
 	//query only by category and website
 	public List<Document> getProds(String category, String website){
-		return getProds(category, website, "");
+		return getProds(category, website, "", "");
 	}
 	
 	/* query by category, website and attribute.
 	 * if a parameter is an empty string, it gets ignored.
 	 */
-	public List<Document> getProds(String category, String website, String attribute){
+	public List<Document> getProds(String category, String website1, String website2, String attribute){
 		MongoCollection<Document> collection = this.database.getCollection("Products");
 		List<Document> prods = new ArrayList<>();
 		Bson cFilter = Filters.eq("category", category);
-		Bson wFilter = Filters.eq("website", website);
+		Bson wFilter = Filters.eq("website", website1);
+		Pattern regex = Pattern.compile(".*"+website2.replace(".", "\\.")+".*", Pattern.CASE_INSENSITIVE);
+		Bson lFilter = Filters.eq("linkage", regex);
 		Bson aFilter = Filters.exists("spec."+attribute, true);		
 		Bson andFilter;
 		
 		List<Bson> filters = new ArrayList<>();
 		if(!category.equals(""))
 			filters.add(cFilter);
-		if(!website.equals(""))
+		if(!website1.equals(""))
 			filters.add(wFilter);
 		if(!attribute.equals(""))
 			filters.add(aFilter);
+		if(!website2.equals(""))
+			filters.add(lFilter);
 		
 		andFilter = Filters.and(filters);
 		
-		collection.find(Filters.and(andFilter))
+		collection.find(Filters.and(andFilter)).limit(2000)
 				  .forEach((Document d) -> prods.add(d));
 		
 		return prods;
@@ -226,7 +231,7 @@ public class MongoDBConnector {
 		List<Document> fetchedProducts = new ArrayList<>();
 		List<Document[]> rlList = new ArrayList<>();
 		
-		//get all the urls of the linkage products
+		//get urls of the linkage products
 		for(int i = 0; i < prods.size(); i++){
 			Document p = prods.get(i);
 			@SuppressWarnings("unchecked")
@@ -245,7 +250,8 @@ public class MongoDBConnector {
 		Bson inFilter = Filters.in("url", docsToFetch);
 		Bson attFilter = Filters.exists("spec."+attribute, true);		
 		Bson andFilter = Filters.and(inFilter, attFilter);
-		collection.find(andFilter).forEach((Document d) -> fetchedProducts.add(d));
+		collection.find(andFilter).projection(Projections.include("spec", "url"))
+									.forEach((Document d) -> fetchedProducts.add(d));
 		
 		//create record linkage list
 		fetchedProducts.stream()
@@ -323,6 +329,11 @@ public class MongoDBConnector {
 		return products;
 	}
 	
+	public void addSyntheticProductsIndexes(){
+		MongoCollection<Document> collection = this.database.getCollection("Products");
+		addProductsIndexes(collection);
+	}
+	
 	/* 
 	 * END PUBLIC METHODS 
 	 */
@@ -338,12 +349,16 @@ public class MongoDBConnector {
 						   .filter(list -> list.size() > 0)
 						   .forEach(collection::insertMany);
 		
+		addProductsIndexes(collection);
+		
+		initializeCollection("Schemas");
+	}
+	
+	private void addProductsIndexes(MongoCollection<Document> collection){
 		collection.createIndex(Indexes.ascending("category"));
 		collection.createIndex(Indexes.ascending("website"));
 		collection.createIndex(Indexes.ascending("website", "category"));
 		collection.createIndex(Indexes.hashed("url"));
-		
-		initializeCollection("Schemas");
 	}
 	
 	@SuppressWarnings("unused")
