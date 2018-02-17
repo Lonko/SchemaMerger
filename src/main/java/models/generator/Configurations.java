@@ -1,12 +1,25 @@
 package models.generator;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 
 public class Configurations {
 	
+	//Parameters for Connectors' constructors and Training
+	private String datasetPath;
+	private String recordLinkagePath;
+	private String trainingSetPath;
+	private String mongoURI;
+	private String datasetName;
+	private String modelPath;
+	private List<String> categories;
+	
+	//Parameters for generation of Synthetic Dataset
 	private int maxPages;
 	private int minPages;
 	private int sources;
+	private int maxLinkage;
 	private String sizeCurveType;
 	private String prodCurveType;
 	private String attrCurveType;
@@ -22,9 +35,19 @@ public class Configurations {
 	private double linkageErrorChance;
 
 	public Configurations(Properties prop){
+		
+		this.datasetPath = prop.getProperty("datasetPath");
+		this.recordLinkagePath = prop.getProperty("recordLinkagePath");
+		this.trainingSetPath = prop.getProperty("trainingSetPath");
+		this.mongoURI = prop.getProperty("mongoURI");
+		this.datasetName = prop.getProperty("datasetName");
+		this.modelPath = prop.getProperty("modelPath");
+		this.categories = Arrays.asList(prop.getProperty("categories").split("/"));
+		
 		this.maxPages = Integer.valueOf(prop.getProperty("maxPages"));
 		this.minPages = Integer.valueOf(prop.getProperty("minPages"));
 		this.sources = Integer.valueOf(prop.getProperty("sources"));
+		this.maxLinkage = Integer.valueOf(prop.getProperty("maxLinkage"));
 		this.sizeCurveType = prop.getProperty("curveSizes");
 		this.prodCurveType = prop.getProperty("curveProds");
 		this.attrCurveType = prop.getProperty("curveAttrs");
@@ -207,5 +230,69 @@ public class Configurations {
 
 	public void setLinkageErrorChance(double linkageErrorChance) {
 		this.linkageErrorChance = linkageErrorChance;
+	}
+
+	public String getDatasetPath() {
+		return datasetPath;
+	}
+
+	public void setDatasetPath(String datasetPath) {
+		this.datasetPath = datasetPath;
+	}
+
+	public String getRecordLinkagePath() {
+		return recordLinkagePath;
+	}
+
+	public void setRecordLinkagePath(String recordLinkagePath) {
+		this.recordLinkagePath = recordLinkagePath;
+	}
+
+	public String getTrainingSetPath() {
+		return trainingSetPath;
+	}
+
+	public void setTrainingSetPath(String trainingSetPath) {
+		this.trainingSetPath = trainingSetPath;
+	}
+
+	public String getMongoURI() {
+		return mongoURI;
+	}
+
+	public void setMongoURI(String mongoURI) {
+		this.mongoURI = mongoURI;
+	}
+
+	public String getDatasetName() {
+		return datasetName;
+	}
+
+	public void setDatasetName(String datasetName) {
+		this.datasetName = datasetName;
+	}
+
+	public String getModelPath() {
+		return modelPath;
+	}
+
+	public void setModelPath(String modelPath) {
+		this.modelPath = modelPath;
+	}
+
+	public List<String> getCategories() {
+		return categories;
+	}
+
+	public void setCategories(List<String> categories) {
+		this.categories = categories;
+	}
+
+	public int getMaxLinkage() {
+		return maxLinkage;
+	}
+
+	public void setMaxLinkage(int maxLinkage) {
+		this.maxLinkage = maxLinkage;
 	}
 }
