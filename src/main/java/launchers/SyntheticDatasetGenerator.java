@@ -18,10 +18,12 @@ import models.generator.Configurations;
 import models.generator.CurveFunction;
 
 public class SyntheticDatasetGenerator {
-	
-	private static final int SOURCE_NAME_LENGTH = 20;
-	private static final int ATTRIBUTE_NAME_LENGTH = 15;
-	private static final int TOKEN_LENGTH = 7;	
+
+	private static final String DEFAULT_MONGO_URI = "mongodb://localhost:27017";
+	private static final String DEFAULT_DATASET_NAME = "SyntheticDataset";
+	private static final int SOURCE_NAME_LENGTH = 15;
+	private static final int ATTRIBUTE_NAME_LENGTH = 7;
+	private static final int TOKEN_LENGTH = 4;	
 	private static final int BATCH_SIZE = 100;
 	private	FileDataConnector fdc;
 	private Configurations conf;
@@ -37,13 +39,24 @@ public class SyntheticDatasetGenerator {
 	public SyntheticDatasetGenerator(){
 		this.fdc = new FileDataConnector();
 		this.conf = new Configurations(fdc.readConfig()); 
-		this.mdbc = new MongoDBConnector("mongodb://localhost:27017", "SyntheticDataset", this.fdc);
+		this.mdbc = new MongoDBConnector(DEFAULT_MONGO_URI, DEFAULT_DATASET_NAME, this.fdc);
 		String path = conf.getStringPathFile();
 		if(path.equals(""))
 			this.sg = new RandomStringGenerator(SOURCE_NAME_LENGTH, ATTRIBUTE_NAME_LENGTH, TOKEN_LENGTH);
 		else 
 			this.sg = new DictionaryStringGenerator(path);
 	}	
+	
+	public SyntheticDatasetGenerator(FileDataConnector fdc, MongoDBConnector mdbc, Configurations conf){
+		this.fdc = fdc;
+		this.conf = conf; 
+		this.mdbc = mdbc;
+		String path = conf.getStringPathFile();
+		if(path.equals(""))
+			this.sg = new RandomStringGenerator(SOURCE_NAME_LENGTH, ATTRIBUTE_NAME_LENGTH, TOKEN_LENGTH);
+		else 
+			this.sg = new DictionaryStringGenerator(path);
+	}
 	
 	//upload Catalogue to MongoDB in batches
 	private void uploadCatalogue(List<Document> catalogue){ 
