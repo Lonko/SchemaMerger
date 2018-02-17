@@ -42,8 +42,7 @@ public class FileDataConnector {
 	}
 	
 	//when using the synthetic dataset
-	public FileDataConnector(String ts, String config){
-		this.tsPath = ts;
+	public FileDataConnector(String config){
 		this.configPath = config;
 	}
 	
@@ -326,5 +325,21 @@ public class FileDataConnector {
 		}
 		
 		return jsonArray;
+	}
+
+	public void setConfigPath(String configPath) {
+		this.configPath = configPath;
+	}
+
+	public void setDatasetPath(String datasetPath) {
+		this.datasetPath = datasetPath;
+	}
+
+	public void setRlPath(String rlPath) {
+		this.rlPath = rlPath;
+	}
+
+	public void setTsPath(String tsPath) {
+		this.tsPath = tsPath;
 	}
 }
