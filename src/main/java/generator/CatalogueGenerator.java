@@ -1,6 +1,7 @@
 package generator;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,6 +25,7 @@ public class CatalogueGenerator {
 	private int maxSizeSources;
 	private int minSizeSources;
 	private int nSources;
+	private int maxLinkage;
 	private int nAttributes;
 	private int nProducts;
 	private CurveFunction sizeCurve;
@@ -32,6 +34,7 @@ public class CatalogueGenerator {
 	private double[] cardPercentages;
 	private String[] tokenClasses;
 	private double[] tokenPercentages;
+	private Map<Integer, List<String>> fixedTokenPool = new HashMap<>();
 	private Map<String, List<String>> attrValues = new HashMap<>();
 	private Map<String, String> attrFixedToken = new HashMap<>();
 	private Map<String, String> cardinalities = new HashMap<>();
@@ -41,6 +44,7 @@ public class CatalogueGenerator {
 		this.maxSizeSources = conf.getMaxPages();
 		this.minSizeSources = conf.getMinPages();
 		this.nSources = conf.getSources();
+		this.maxLinkage = conf.getMaxLinkage();
 		this.nAttributes = conf.getAttributes();
 		
 		String typeSize = conf.getSizeCurveType();
@@ -67,8 +71,8 @@ public class CatalogueGenerator {
 		if(typePLinkage.equals("0"))
 			this.productLinkageCurve = new ConstantCurveFunction(nSources, sizeCurve.getSampling());
 		else
-			this.productLinkageCurve = new RationalCurveFunction(typePLinkage,
-																nSources, sizeCurve.getSampling());
+			this.productLinkageCurve = new RationalCurveFunction(typePLinkage, this.maxLinkage,
+																sizeCurve.getSampling());
 		
 		this.nProducts = this.productLinkageCurve.getYValues().length;
 	}
@@ -114,6 +118,20 @@ public class CatalogueGenerator {
 		
 		}
 	}
+
+	//generates the pool of token to use for the fixed part of the values
+	private void generateTokenPools(){
+		//generate a different pool for each cardinality Class
+		for(String cardClass : this.cardClasses){
+			int nToken = Integer.valueOf(cardClass);
+			Set<String> tokenPool = new HashSet<>();
+			//nToken*15 to generate a pool bigger than necessary
+			for(int i = 0; i < nToken*15; i++){
+				tokenPool.add(this.stringGenerator.generateAttributeToken());
+			}
+			this.fixedTokenPool.put(Integer.valueOf(cardClass), new ArrayList<String>(tokenPool));
+		}
+	}
 	
 	//generates the attributes' names and their possible values
 	private void prepareAttributes(){
@@ -131,14 +149,16 @@ public class CatalogueGenerator {
 		//attribute -> token type
 		assignClasses(attrNames, "tokens");
 
-
+		generateTokenPools();
 		for(String attribute : attrNames){
 			int cardinality = Integer.valueOf(this.cardinalities.get(attribute));
+			List<String> tokenPool = this.fixedTokenPool.get(cardinality);
+			Collections.shuffle(tokenPool);
 			String[] attrTokens = this.tokens.get(attribute).split("-");
 			String fixedTokens = "";
 
 			for(int i = 0; i < Integer.valueOf(attrTokens[1]); i++){
-				fixedTokens += this.stringGenerator.generateAttributeToken()+" ";
+				fixedTokens += tokenPool.get(i)+" ";
 			}
 			this.attrFixedToken.put(attribute, fixedTokens.trim());
 
