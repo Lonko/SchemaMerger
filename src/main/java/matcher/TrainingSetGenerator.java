@@ -39,11 +39,11 @@ public class TrainingSetGenerator {
 		do{
 			List<Document> sample = this.mdbc.getRLSample(sampleSize, category);
 			Map<String, List<Tuple>> newExamples = getExamples(sample, setSize, ratio);
-			newSizeP = newExamples.get("positives").size(); 
+			newSizeP = newExamples.get("positives").size();
 			newSizeN = newExamples.get("negatives").size();
 			System.out.println(newSizeP+" + "+newSizeN+" = "+(newSizeP+newSizeN));
 			hasEnoughExamples = ((setSize * 0.95) <= (newSizeP + newSizeN)) && ((newSizeP + newSizeN) <= (setSize * 1.05));
-			hasEnoughNegatives = ( newSizeP / (double) (newSizeP + newSizeN) == ratio );
+			hasEnoughNegatives = ( Math.round(100*(newSizeP / (double) (newSizeP + newSizeN)))/100.0 == ratio );
 			tentatives++;
 			if((sizeP+sizeN) < (newSizeP+newSizeN) && hasEnoughNegatives){
 				examples = newExamples;
@@ -56,8 +56,10 @@ public class TrainingSetGenerator {
 		} while (! (hasEnoughExamples));  				     //there must be enough examples
 		
 		//if not enough examples were found, return an empty list
-		if(examples.size() == 0) 
+		if(examples.size() == 0) {
+			System.err.println("NON ABBASTANZA ESEMPI");
 			return new ArrayList<String>();
+		}
 		
 		System.out.println(examples.get("positives").size()
 				+" coppie di prodotti prese in considerazione per il training set");
@@ -117,11 +119,15 @@ public class TrainingSetGenerator {
 						aSet1.retainAll(aSet2);
 						
 						//generates positive examples
-						List<Tuple> tmpPosEx = new ArrayList<>();
+						List<Tuple> allTmpPosEx = new ArrayList<>();
 						aSet1.stream().forEach(a -> {
 							Tuple t = new Tuple(a, a, website1, website2, category1);
-							tmpPosEx.add(t);
+							allTmpPosEx.add(t);
 						});
+						Collections.shuffle(allTmpPosEx);
+						int endIndex = (11 < allTmpPosEx.size()) ? 11 : allTmpPosEx.size();
+						//get max 10 examples from the same couple
+						List<Tuple> tmpPosEx = allTmpPosEx.subList(0, endIndex);
 						posExamples.addAll(tmpPosEx);
 						
 						//generates negative examples
@@ -186,14 +192,17 @@ public class TrainingSetGenerator {
 		String attribute1 = t.getAttribute1();
 		String attribute2 = t.getAttribute2();
 		String category = t.getCategory();
-		List<Document> sList1 = this.mdbc.getProds(website1, category, attribute1);
-		List<Document> wList1 = this.mdbc.getProds(website1, "", attribute1);
-		List<Document> cList1 = this.mdbc.getProds("", category, attribute1);
+		List<Document> sList1 = this.mdbc.getProds(category, website1, website2, attribute1);
+//		List<Document> wList1 = this.mdbc.getProds("", website1, attribute1);
+		List<Document> cList1 = this.mdbc.getProds(category, "", website2, attribute1);
+
 		List<Document[]> sList2 = this.mdbc.getProdsInRL(sList1, website2, attribute2);
-		List<Document[]> wList2 = this.mdbc.getProdsInRL(wList1, website2, attribute2);
+//		List<Document[]> wList2 = this.mdbc.getProdsInRL(wList1, website2, attribute2);
 		List<Document[]> cList2 = this.mdbc.getProdsInRL(cList1, website2, attribute2);
+
 		try{
-			features = computeFeatures(sList2, wList2, cList2, attribute1, attribute2, candidateType, useWebsite);
+			features = computeFeatures(sList2, new ArrayList<Document[]>(), cList2, 
+										attribute1, attribute2, candidateType, useWebsite);
 		} catch (ArithmeticException e){
 			System.err.println(t.toString());
 			try {
@@ -204,7 +213,7 @@ public class TrainingSetGenerator {
 		}
 
 		System.out.println(sList1.size()+"-->"+sList2.size());
-		System.out.println(wList1.size()+"-->"+wList2.size());
+//		System.out.println(wList1.size()+"-->"+wList2.size());
 		System.out.println(cList1.size()+"-->"+cList2.size());
 		System.out.println(features.toString());
 
@@ -223,8 +232,20 @@ public class TrainingSetGenerator {
 		features.setCategoryJSD(this.fe.getJSD(cBags));
 		features.setSourceJC(this.fe.getJC(sBags));
 		features.setCategoryJC(this.fe.getJC(cBags));
+		try{
 		features.setSourceMI(this.fe.getMI(sList, a1, a2));
 		features.setCategoryMI(this.fe.getMI(cList, a1, a2));
+		}catch(Exception e){
+//			System.out.println("DIMENSIONI S: "+sList.size());
+//			for(Document[] d: sList){
+//				System.out.println(d[0].getString(a1)+"\t"+ d[1].getString(a2));
+//			}
+//
+//			System.out.println("DIMENSIONI C: "+sList.size());
+//			for(Document[] d: cList){
+//				System.out.println(d[0].getString(a1)+"\t"+ d[1].getString(a2));
+//			}
+		}
 		if(useWebsite){
 			features.setWebsiteJSD(this.fe.getJSD(wBags));
 			features.setWebsiteJC(this.fe.getJC(wBags));
