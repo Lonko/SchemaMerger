@@ -21,4 +21,4 @@
 * [ ] Dictionary based String generator
 * [x] Sources creation from synthetic catalog  :exclamation:
 * [ ] Error Rate curve for the generated sources
-* [ ] Authomatic evaluation of classification on synthetic dataset  :exclamation:
+* [x] Authomatic evaluation of classification on synthetic dataset  :exclamation:
