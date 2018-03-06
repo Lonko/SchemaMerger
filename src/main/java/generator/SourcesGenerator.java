@@ -1,5 +1,6 @@
 package generator;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,6 +29,8 @@ public class SourcesGenerator {
 	//for example 1 cm = 1 centimeter (affects only fixed tokens)
 	private double differentRepresentation;
 	//probability of missing linkage url
+	private double missingLinkage;
+	//probability of a wrong linkage url
 	private double linkageError;
 	private MongoDBConnector mdbc;
 	private StringGenerator stringGenerator;
@@ -40,9 +43,9 @@ public class SourcesGenerator {
 	private Map<String, List<Integer>> source2Ids = new HashMap<>();
 	//Map <id, Sources in which it appears>
 	private Map<Integer, List<String>> id2Sources = new HashMap<>();
-	//list of "head" attribute (in terms of number of sources in which they appear)
+	//list of "head" attributes (in terms of number of sources in which they appear)
 	private List<String> headAttributes = new ArrayList<>();
-	//list of "tail" attribute (in terms of number of sources in which they appear)
+	//list of "tail" attributes (in terms of number of sources in which they appear)
 	private List<String> tailAttributes = new ArrayList<>();
 	/*
 	 * Maps to replace by implementing Attribute objects
@@ -71,6 +74,7 @@ public class SourcesGenerator {
 		this.randomError = conf.getRandomErrorChance();
 		this.differentFormat = conf.getDifferentFormatChance();
 		this.differentRepresentation = conf.getDifferentRepresentationChance();
+		this.missingLinkage = conf.getMissingLinkageChance();
 		this.linkageError = conf.getLinkageErrorChance();
 		
 		if(curveType.equals("0"))
@@ -83,18 +87,18 @@ public class SourcesGenerator {
 	
 	//assigns attributes to each source
 	private void assignAttributes(List<String> sourcesNames){
-		List<String> shuffledSources = new ArrayList<>(sourcesNames);
-		List<String> attributes = new ArrayList<>();
-		attributes.addAll(this.fixedTokens.keySet());
+        List<String> shuffledSources = new ArrayList<>(sourcesNames);
+        List<String> attributes = new ArrayList<>(this.fixedTokens.keySet());
 		int[] attrLinkage = this.aExtLinkageCurve.getYValues();
 		int headThreshold = this.aExtLinkageCurve.getHeadThreshold();
+		
 		
 		//for each attribute
 		for(int i = 0; i < attributes.size(); i++){
 			String attribute = attributes.get(i);
 			int linkage = attrLinkage[i];
+	        Collections.shuffle(shuffledSources);
 			this.linkage.put(attribute, linkage);
-			Collections.shuffle(shuffledSources);
 			//mark attribute as head or tail
 			if(i <= headThreshold)
 				this.headAttributes.add(attribute);
@@ -148,14 +152,14 @@ public class SourcesGenerator {
 					List<Integer> ids = this.source2Ids.get(source);
 					List<String> sources = this.id2Sources.get(idP);
 					ids.add(idP);
-					sources.add(source);
-					sources.remove(candidateSource);
-					this.source2Ids.put(source, ids);
-					this.id2Sources.put(idP, sources);
+                    sources.add(source);
+                    sources.remove(candidateSource);
+                    this.source2Ids.put(source, ids);
+                    this.id2Sources.put(idP, sources);
 					//update info N
 					ids = this.source2Ids.get(candidateSource);
 					sources = this.id2Sources.get(idN);
-					ids.remove(idP);
+					ids.remove(Integer.valueOf(idP));
 					ids.add(idN);
 					sources.add(candidateSource);
 					this.source2Ids.put(candidateSource, ids);
@@ -221,6 +225,7 @@ public class SourcesGenerator {
 	
 	//selects a subset of attributes for the head and tail partitions of a source's schema
 	private List<String> getHeadAttributes(List<String> schema, CurveFunction curve){
+	    //internal head/tail attributes
 		List<String> headAttributes = new ArrayList<>();
 		List<String> tailAttributes = new ArrayList<>();
 		int head = curve.getHeadThreshold();
@@ -303,12 +308,12 @@ public class SourcesGenerator {
 		Map<String, List<String>> fErrors = new HashMap<>();
 		
 		for(String attribute : schema){
-			//if the attribute has been assigned error type "format"
+			//if the attribute has been assigned error type "format" or "representation"
 			if(errors.containsKey(attribute) && !errors.get(attribute).equals("none")){
 				String type = errors.get(attribute);
 				List<String> newValues = new ArrayList<>();
-				String fixedPart = this.fixedTokens.get(attribute);
-				String[] fixTokens = fixedPart.split(" ");
+				String fixedString = this.fixedTokens.get(attribute);
+				String[] fixTokens = fixedString.split(" ");
 				List<String> newFixTokens = new ArrayList<>();
 				//generate new fixed tokens
 				for(int i = 0; i < fixTokens.length; i++){
@@ -318,13 +323,14 @@ public class SourcesGenerator {
 					else
 						i--;
 				}
-				String newFixedPart = String.join(" ", newFixTokens);
+				
+				String newFixedString = String.join(" ", newFixTokens);
 				//generate new random tokens and values
 				for(String value : this.values.get(attribute)){
-					String randomPart = value.substring(0, value.length()-fixedPart.length()-1);
-					String newRandomPart = randomPart;
+					String randomString = value.substring(0, value.length()-fixedString.length()-1);
+					String newRandomString = randomString;
 					if(type.equals("format")){
-						String[] randTokens = randomPart.split(" ");
+						String[] randTokens = randomString.split(" ");
 						List<String> newRandTokens = new ArrayList<>();
 						for(int j = 0; j < randTokens.length; j++){
 							String newToken = this.stringGenerator.generateAttributeToken();
@@ -333,9 +339,9 @@ public class SourcesGenerator {
 							else
 								j--;
 						}
-						newRandomPart = String.join(" ", newRandTokens);
+						newRandomString = String.join(" ", newRandTokens);
 					}
-					newValues.add(newRandomPart+" "+newFixedPart);
+					newValues.add(newRandomString+" "+newFixedString);
 				}
 				fErrors.put(attribute, newValues);
 			}
@@ -383,24 +389,28 @@ public class SourcesGenerator {
 		Random rnd = new Random();
 		
 		for(Document prod : products){
-			int id = prod.getInteger("_id");
+			int id = prod.getInteger("id");
 			List<String> attrs = pAttrs.get(id);
 			Document page = new Document();
 			Document newSpecs = generateSpecs(prod.get("spec", Document.class), newValues, attrs);
+			//linkage
 			List<String> linkage = new ArrayList<>();
 			for(String rlSource : this.id2Sources.get(id))
 				if(!rlSource.equals(source)){
+				    /* error < this.missingLinkage => no linkage
+				     * this.missingLinkage <= error < this.linkageError => wrong linkage
+				     * this.missingLinkage + this.linkageError <= error => correct linkage
+				     */
 					double error = rnd.nextDouble();
 					//no error
-					if(error > 1.1*this.linkageError)
+					if(error > this.missingLinkage + this.linkageError)
 						linkage.add(rlSource+"/"+id+"/");
-					//add wrong linkage url (percentage Error = linkageError/10)
-					else if(error > this.linkageError){
+					//add wrong linkage url
+					else if(error > this.missingLinkage){
 						int wrongProdId = rnd.nextInt(this.id2Sources.size());
 						int wrongSourceId = rnd.nextInt(this.id2Sources.get(wrongProdId).size());
-						linkage.add(this.id2Sources.get(wrongSourceId)+"/"+wrongProdId+"/");
+						linkage.add(this.id2Sources.get(wrongProdId).get(wrongSourceId)+"/"+wrongProdId+"/");
 					}
-					//if (rnd <= this.linkageError) do nothing -> missing linkage
 				}
 			
 			page.append("category", "fakeCategory");
@@ -463,6 +473,43 @@ public class SourcesGenerator {
 		return sourcesNames;
 	}
 	
+	//returns a list of source names ordered by linkage with the previous sources
+	public List<String> getLinkageOrder(List<String> sourcesNames){
+	    List<String> orderedSources = new ArrayList<>();
+	    List<String> sources2Visit = new ArrayList<>(sourcesNames);
+	    //the first is the one with the most product pages
+	    orderedSources.add(sourcesNames.get(0));
+	    sources2Visit.remove(sourcesNames.get(0));
+	    
+	    //each iteration adds a new source to orderedSources
+	    while(sources2Visit.size() > 0){
+	        int maxLinkage = -1;
+	        String source = "";
+	        //Set of product ids of the sources in orderedSources
+	        Set<Integer> idsInPrevSources = new HashSet<>();
+	        for(String s : orderedSources){
+	            idsInPrevSources.addAll(this.source2Ids.get(s));
+	        }
+	        /* each iteration searches for the source with 
+	         * the most linkage towards the sources in orderedSources
+	         */
+	        for(int j = 0; j < sources2Visit.size(); j++){
+	            String currentSource = sources2Visit.get(j);
+	            Set<Integer> idsInCurrentSource = new HashSet<>(this.source2Ids.get(currentSource));
+	            idsInCurrentSource.retainAll(idsInPrevSources);
+	            int linkage = idsInCurrentSource.size();
+	            if(linkage > maxLinkage){
+	                source = currentSource;
+	                maxLinkage = linkage;
+	            }
+	        }
+	        orderedSources.add(source);
+	        sources2Visit.remove(source);
+	    }
+	    
+	    return orderedSources;
+	}
+	
 	//generates the complete sources and returns attributes' linkage info
 	public Map<String, Integer> createSources(List<String> sourcesNames){
 		List<Document> sourcePages;
@@ -475,14 +522,15 @@ public class SourcesGenerator {
 			List<Integer> ids = this.source2Ids.get(source);
 			List<Document> products = this.mdbc.getFromCatalogue(ids);
 			sourcePages = createSource(source, size, products);
-			uploadSource(sourcePages);
+			uploadSource(sourcePages);	            
+	            
 			System.out.println("Sorgenti caricate: " + (i+1)+"\t(# pagine della corrente: "
 								+sourcePages.size()+")");
 		}
 		
-		this.mdbc.addSyntheticProductsIndexes();
+		this.mdbc.addSyntheticProductsIndexes();		
+		this.mdbc.initializeCollection("Schemas");
 		
 		return this.linkage;		
 	}
-
 }
