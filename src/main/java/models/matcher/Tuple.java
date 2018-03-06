@@ -119,12 +119,14 @@ public class Tuple {
 
     @Override
     public String toString() {
-        return "Tuple {\n\tattribute1 => " + attribute1 + ",\n\tattribute2 => " + attribute2 + ",\n\tschema1 => " + schema1
-                + ",\n\tschema2 => " + schema2 + ",\n\tcategory => " + category + "\n}";
+        return "Tuple {\n\tattribute1 => " + attribute1 + ",\n\tattribute2 => " + attribute2
+                + ",\n\tschema1 => " + schema1 + ",\n\tschema2 => " + schema2 + ",\n\tcategory => "
+                + category + "\n}";
     }
 
     public String toRowString() {
-        return this.attribute1.replace(",", "#;#") + "," + this.attribute2.replace(",", "#;#") + "," + this.schema1.replace(",", "#;#")
-                + "," + this.schema2.replace(",", "#;#") + "," + this.category.replace(",", "#;#") + ",";
+        return this.attribute1.replace(",", "#;#") + "," + this.attribute2.replace(",", "#;#") + ","
+                + this.schema1.replace(",", "#;#") + "," + this.schema2.replace(",", "#;#") + ","
+                + this.category.replace(",", "#;#") + ",";
     }
 }

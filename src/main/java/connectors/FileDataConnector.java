@@ -173,7 +173,8 @@ public class FileDataConnector {
     }
 
     public void printTrainingSet(String tsName, List<String> trainingSet) {
-        String header = "Attribute1,Attribute2,Website1,Website2,Category," + "JSDs,JSDw,JSDc,JCs,JCw,JCc,MIs,MIw,MIc,Match";
+        String header = "Attribute1,Attribute2,Website1,Website2,Category,"
+                + "JSDs,JSDw,JSDc,JCs,JCw,JCc,MIs,MIw,MIc,Match";
         printCSV(tsName, trainingSet, header);
     }
 
@@ -218,7 +219,8 @@ public class FileDataConnector {
                 clusterID++;
                 // add rows for the linkage CSV
                 for (String attr : cluster) {
-                    if (schema.getMatchLinkage().containsKey(attr) || schema.getTotalLinkage().containsKey(attr)) {
+                    if (schema.getMatchLinkage().containsKey(attr)
+                            || schema.getTotalLinkage().containsKey(attr)) {
                         // linkage on source
                         int matchLinkage = schema.getMatchLinkage().getOrDefault(attr, 0);
                         // linkage on category

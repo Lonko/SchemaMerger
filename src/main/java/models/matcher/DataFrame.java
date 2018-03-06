@@ -137,8 +137,8 @@ public class DataFrame {
     public void removeNull() {
         List<Integer> indexes = new ArrayList<>();
         for (int i = 0; i < this.nRows; i++)
-            if (Stream.of(this.JSDs, this.JSDw, this.JSDc, this.JCs, this.JCw, this.JCc, this.MIs, this.MIw, this.MIc).allMatch(
-                    x -> x == null))
+            if (Stream.of(this.JSDs, this.JSDw, this.JSDc, this.JCs, this.JCw, this.JCc, this.MIs, this.MIw,
+                    this.MIc).allMatch(x -> x == null))
                 indexes.add(i);
 
         removeByIndexes(indexes);
@@ -195,10 +195,11 @@ public class DataFrame {
     public List<String> toCSVFormat() {
         List<String> rows = new ArrayList<>();
         for (int i = 0; i < this.nRows; i++) {
-            rows.add(this.attrSource.get(i).replace(",", "#;#") + "," + this.attrCatalog.get(i).replace(",", "#;#") + ","
-                    + this.JSDs.get(i) + "," + this.JSDw.get(i) + "," + this.JSDc.get(i) + "," + this.JCs.get(i) + "," + this.JCw.get(i)
-                    + "," + this.JCc.get(i) + "," + this.MIs.get(i) + "," + this.MIw.get(i) + "," + this.MIc.get(i) + ","
-                    + this.Match.get(i));
+            rows.add(this.attrSource.get(i).replace(",", "#;#") + ","
+                    + this.attrCatalog.get(i).replace(",", "#;#") + "," + this.JSDs.get(i) + ","
+                    + this.JSDw.get(i) + "," + this.JSDc.get(i) + "," + this.JCs.get(i) + ","
+                    + this.JCw.get(i) + "," + this.JCc.get(i) + "," + this.MIs.get(i) + "," + this.MIw.get(i)
+                    + "," + this.MIc.get(i) + "," + this.Match.get(i));
         }
         return rows;
     }
@@ -206,8 +207,8 @@ public class DataFrame {
     public List<String> toCSVFormatSlim() {
         List<String> rows = new ArrayList<>();
         for (int i = 0; i < this.nRows; i++) {
-            rows.add(this.attrSource.get(i).replace(",", "#;#") + "," + this.attrCatalog.get(i).replace(",", "#;#") + ","
-                    + this.Match.get(i));
+            rows.add(this.attrSource.get(i).replace(",", "#;#") + ","
+                    + this.attrCatalog.get(i).replace(",", "#;#") + "," + this.Match.get(i));
         }
         return rows;
     }

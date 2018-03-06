@@ -17,8 +17,10 @@ public class BagsOfWordsManager {
         this.sourceBagOfWords = new ArrayList<>();
 
         for (Document[] couple : prods) {
-            String[] wordsCatalog = couple[0].get("spec", Document.class).getString(aCatalog).split("( |(###))+");
-            String[] wordsSource = couple[1].get("spec", Document.class).getString(aSource).split("( |(###))+");
+            String[] wordsCatalog = couple[0].get("spec", Document.class).getString(aCatalog)
+                    .split("( |(###))+");
+            String[] wordsSource = couple[1].get("spec", Document.class).getString(aSource)
+                    .split("( |(###))+");
             catalogBagOfWords.addAll(Arrays.asList(wordsCatalog));
             sourceBagOfWords.addAll(Arrays.asList(wordsSource));
         }

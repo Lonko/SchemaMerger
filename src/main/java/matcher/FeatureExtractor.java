@@ -119,8 +119,8 @@ public class FeatureExtractor {
         return margProb;
     }
 
-    private double[][] getJointProbDistr(List<Document[]> prods, String a1, String a2, List<String> distinctValues1,
-            List<String> distinctValues2) {
+    private double[][] getJointProbDistr(List<Document[]> prods, String a1, String a2,
+            List<String> distinctValues1, List<String> distinctValues2) {
 
         int n = 0;
         double[][] matrix = new double[distinctValues1.size()][distinctValues2.size()];

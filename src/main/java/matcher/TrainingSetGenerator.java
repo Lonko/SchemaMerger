@@ -23,14 +23,15 @@ public class TrainingSetGenerator {
     private FeatureExtractor fe;
     private Map<String, List<String>> clonedSources;
 
-    public TrainingSetGenerator(MongoDBConnector conn, FeatureExtractor fe, Map<String, List<String>> clSources) {
+    public TrainingSetGenerator(MongoDBConnector conn, FeatureExtractor fe,
+            Map<String, List<String>> clSources) {
         this.mdbc = conn;
         this.fe = new FeatureExtractor();
         this.clonedSources = clSources;
     }
 
-    public List<String> getTrainingSetWithTuples(int sampleSize, int setSize, boolean useWebsite, boolean addTuples, double ratio,
-            String category) {
+    public List<String> getTrainingSetWithTuples(int sampleSize, int setSize, boolean useWebsite,
+            boolean addTuples, double ratio, String category) {
 
         Map<String, List<Tuple>> examples = new HashMap<>();
         boolean hasEnoughNegatives = false, hasEnoughExamples = false;
@@ -42,7 +43,8 @@ public class TrainingSetGenerator {
             newSizeP = newExamples.get("positives").size();
             newSizeN = newExamples.get("negatives").size();
             System.out.println(newSizeP + " + " + newSizeN + " = " + (newSizeP + newSizeN));
-            hasEnoughExamples = ((setSize * 0.95) <= (newSizeP + newSizeN)) && ((newSizeP + newSizeN) <= (setSize * 1.05));
+            hasEnoughExamples = ((setSize * 0.95) <= (newSizeP + newSizeN))
+                    && ((newSizeP + newSizeN) <= (setSize * 1.05));
             hasEnoughNegatives = (Math.round(100 * (newSizeP / (double) (newSizeP + newSizeN))) / 100.0 == ratio);
             tentatives++;
             if ((sizeP + sizeN) < (newSizeP + newSizeN) && hasEnoughNegatives) {
@@ -61,10 +63,12 @@ public class TrainingSetGenerator {
             return new ArrayList<String>();
         }
 
-        System.out.println(examples.get("positives").size() + " coppie di prodotti prese in considerazione per il training set");
+        System.out.println(examples.get("positives").size()
+                + " coppie di prodotti prese in considerazione per il training set");
         System.out.println(examples.get("positives").size() + "\t" + examples.get("negatives").size());
 
-        List<Features> trainingSet = getTrainingSet(examples.get("positives"), examples.get("negatives"), useWebsite);
+        List<Features> trainingSet = getTrainingSet(examples.get("positives"), examples.get("negatives"),
+                useWebsite);
         List<String> tsRows = new ArrayList<>();
 
         for (int i = 0; i < trainingSet.size(); i++) {
@@ -105,7 +109,8 @@ public class TrainingSetGenerator {
                     String source2 = category2 + "###" + website2;
 
                     // check if the two pages belong to cloned sources
-                    if (this.clonedSources.containsKey(source1) && this.clonedSources.get(source1).contains(source2))
+                    if (this.clonedSources.containsKey(source1)
+                            && this.clonedSources.get(source1).contains(source2))
                         continue;
 
                     if (!website1.equals(website2)) {
@@ -146,7 +151,8 @@ public class TrainingSetGenerator {
         Collections.shuffle(negExamples);
         int posSize = (int) (posExamples.size() * ratio);
         int negSize = posExamples.size() - posSize;
-        System.out.println("posExamples size = " + posExamples.size() + " --- posSize = " + posSize + " --- negSize = " + negSize);
+        System.out.println("posExamples size = " + posExamples.size() + " --- posSize = " + posSize
+                + " --- negSize = " + negSize);
         if (posExamples.size() > posSize)
             posExamples = posExamples.subList(0, posSize);
         if (negExamples.size() > negSize)
@@ -199,7 +205,8 @@ public class TrainingSetGenerator {
         List<Document[]> cList2 = this.mdbc.getProdsInRL(cList1, website2, attribute2);
 
         try {
-            features = computeFeatures(sList2, new ArrayList<Document[]>(), cList2, attribute1, attribute2, candidateType, useWebsite);
+            features = computeFeatures(sList2, new ArrayList<Document[]>(), cList2, attribute1, attribute2,
+                    candidateType, useWebsite);
         } catch (ArithmeticException e) {
             System.err.println(t.toString());
             try {
@@ -217,8 +224,8 @@ public class TrainingSetGenerator {
         return features;
     }
 
-    private Features computeFeatures(List<Document[]> sList, List<Document[]> wList, List<Document[]> cList, String a1, String a2,
-            double type, boolean useWebsite) {
+    private Features computeFeatures(List<Document[]> sList, List<Document[]> wList, List<Document[]> cList,
+            String a1, String a2, double type, boolean useWebsite) {
 
         Features features = new Features();
         BagsOfWordsManager sBags = new BagsOfWordsManager(a1, a2, sList);

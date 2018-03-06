@@ -24,8 +24,8 @@ public class RConnector {
         // start REngine
         try {
             /* for debugging */
-            this.eng = REngine.engineForClass("org.rosuda.REngine.JRI.JRIEngine", new String[] { "--vanilla" }, new REngineStdOutput(),
-                    false);
+            this.eng = REngine.engineForClass("org.rosuda.REngine.JRI.JRIEngine",
+                    new String[] { "--vanilla" }, new REngineStdOutput(), false);
             // this.eng =
             // REngine.engineForClass("org.rosuda.REngine.JRI.JRIEngine");
             // load caret package
@@ -99,8 +99,9 @@ public class RConnector {
             double[] colMIc = df.getMIc().stream().mapToDouble(Double::doubleValue).toArray();
 
             // create dataframe
-            REXP mydf = REXP.createDataFrame(new RList(new REXP[] { new REXPDouble(colJSDs), new REXPDouble(colJSDc),
-                    new REXPDouble(colJCs), new REXPDouble(colJCc), new REXPDouble(colMIs), new REXPDouble(colMIc) }, colNames));
+            REXP mydf = REXP.createDataFrame(new RList(new REXP[] { new REXPDouble(colJSDs),
+                    new REXPDouble(colJSDc), new REXPDouble(colJCs), new REXPDouble(colJCc),
+                    new REXPDouble(colMIs), new REXPDouble(colMIc) }, colNames));
             // pass dataframe to REngine
             this.eng.assign("dataFrame", mydf);
             // predict matches

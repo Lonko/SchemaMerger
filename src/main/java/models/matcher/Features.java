@@ -98,14 +98,17 @@ public class Features {
     }
 
     public boolean hasNan() {
-        return Double.isNaN(this.sourceJSD) || Double.isNaN(this.websiteJSD) || Double.isNaN(this.categoryJSD)
-                || Double.isNaN(this.sourceJC) || Double.isNaN(this.websiteJC) || Double.isNaN(this.categoryJC)
-                || Double.isNaN(this.sourceMI) || Double.isNaN(this.websiteMI) || Double.isNaN(this.categoryMI) || Double.isNaN(this.match);
+        return Double.isNaN(this.sourceJSD) || Double.isNaN(this.websiteJSD)
+                || Double.isNaN(this.categoryJSD) || Double.isNaN(this.sourceJC)
+                || Double.isNaN(this.websiteJC) || Double.isNaN(this.categoryJC)
+                || Double.isNaN(this.sourceMI) || Double.isNaN(this.websiteMI)
+                || Double.isNaN(this.categoryMI) || Double.isNaN(this.match);
     }
 
     public String toString() {
-        return this.sourceJSD + "," + this.websiteJSD + "," + this.categoryJSD + "," + this.sourceJC + "," + this.websiteJC + ","
-                + this.categoryJC + "," + this.sourceMI + "," + this.websiteMI + "," + this.categoryMI;
+        return this.sourceJSD + "," + this.websiteJSD + "," + this.categoryJSD + "," + this.sourceJC + ","
+                + this.websiteJC + "," + this.categoryJC + "," + this.sourceMI + "," + this.websiteMI + ","
+                + this.categoryMI;
     }
 
 }

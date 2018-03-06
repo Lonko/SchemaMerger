@@ -57,7 +57,8 @@ public class Match {
         List<String[]> attrs = new ArrayList<>();
 
         for (int i = 0; i < this.nRows; i++) {
-            String[] attributesCouple = new String[] { this.sourceAttributes.get(i), this.catalogAttributes.get(i) };
+            String[] attributesCouple = new String[] { this.sourceAttributes.get(i),
+                    this.catalogAttributes.get(i) };
             attrs.add(attributesCouple);
         }
 
@@ -67,7 +68,8 @@ public class Match {
     public List<String> toCSVFormat() {
         List<String> rows = new ArrayList<>();
         for (int i = 0; i < this.nRows; i++) {
-            rows.add(this.sourceAttributes.get(i).replace(",", "#;#") + "," + this.catalogAttributes.get(i).replace(",", "#;#") + ","
+            rows.add(this.sourceAttributes.get(i).replace(",", "#;#") + ","
+                    + this.catalogAttributes.get(i).replace(",", "#;#") + ","
                     + this.matchProbabilities.get(i));
         }
         return rows;

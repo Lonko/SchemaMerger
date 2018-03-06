@@ -60,8 +60,9 @@ public class SourcesGenerator {
     // Map <Attribute, values>
     private Map<String, List<String>> values = new HashMap<>();
 
-    public SourcesGenerator(MongoDBConnector mdbc, Configurations conf, StringGenerator sg, CurveFunction sizes, CurveFunction prods,
-            Map<String, String> fixedTokens, Map<String, List<String>> values) {
+    public SourcesGenerator(MongoDBConnector mdbc, Configurations conf, StringGenerator sg,
+            CurveFunction sizes, CurveFunction prods, Map<String, String> fixedTokens,
+            Map<String, List<String>> values) {
 
         this.mdbc = mdbc;
         String curveType = conf.getAttrCurveType();
@@ -146,7 +147,8 @@ public class SourcesGenerator {
                 candidateSource = intersection.get(0);
             for (String source : sourceNames) {
                 int index = sourceNames.indexOf(source);
-                if (!this.source2Ids.get(source).contains(idP) && this.source2Ids.get(source).size() != sizes[index]) {
+                if (!this.source2Ids.get(source).contains(idP)
+                        && this.source2Ids.get(source).size() != sizes[index]) {
                     // update info P
                     List<Integer> ids = this.source2Ids.get(source);
                     List<String> sources = this.id2Sources.get(idP);
@@ -218,7 +220,8 @@ public class SourcesGenerator {
                         j++;
                         continue;
                     } else {
-                        throw new IllegalStateException("A problem has occurred in the assignment of products' pages");
+                        throw new IllegalStateException(
+                                "A problem has occurred in the assignment of products' pages");
                     }
                 }
 
@@ -391,8 +394,8 @@ public class SourcesGenerator {
     }
 
     // generates the products' pages for the source
-    private List<Document> createProductsPages(String source, Map<String, List<String>> newValues, Map<Integer, List<String>> pAttrs,
-            List<Document> products) {
+    private List<Document> createProductsPages(String source, Map<String, List<String>> newValues,
+            Map<Integer, List<String>> pAttrs, List<Document> products) {
         List<Document> prodPages = new ArrayList<>();
         Random rnd = new Random();
 
@@ -419,7 +422,8 @@ public class SourcesGenerator {
                     else if (error > this.missingLinkage) {
                         int wrongProdId = rnd.nextInt(this.id2Sources.size());
                         int wrongSourceId = rnd.nextInt(this.id2Sources.get(wrongProdId).size());
-                        linkage.add(this.id2Sources.get(wrongProdId).get(wrongSourceId) + "/" + wrongProdId + "/");
+                        linkage.add(this.id2Sources.get(wrongProdId).get(wrongSourceId) + "/" + wrongProdId
+                                + "/");
                     }
                 }
 
@@ -451,7 +455,8 @@ public class SourcesGenerator {
 
         // each iteration is a batch of products to upload
         while (uploadedProds != productPages.size()) {
-            int size = (productPages.size() - uploadedProds > BATCH_SIZE) ? BATCH_SIZE : productPages.size() - uploadedProds;
+            int size = (productPages.size() - uploadedProds > BATCH_SIZE) ? BATCH_SIZE : productPages.size()
+                    - uploadedProds;
             List<Document> batch = new ArrayList<>();
             for (int i = 0; i < size; i++) {
                 int index = uploadedProds + i;
@@ -532,7 +537,8 @@ public class SourcesGenerator {
             sourcePages = createSource(source, size, products);
             uploadSource(sourcePages);
 
-            System.out.println("Sorgenti caricate: " + (i + 1) + "\t(# pagine della corrente: " + sourcePages.size() + ")");
+            System.out.println("Sorgenti caricate: " + (i + 1) + "\t(# pagine della corrente: "
+                    + sourcePages.size() + ")");
         }
 
         this.mdbc.addSyntheticProductsIndexes();

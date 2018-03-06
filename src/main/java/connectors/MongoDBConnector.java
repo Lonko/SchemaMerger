@@ -85,9 +85,11 @@ public class MongoDBConnector {
     public void initializeCollection(String collectionName) {
 
         try {
-            MongoCollection<Document> collection = this.database.getCollection(collectionName).withWriteConcern(WriteConcern.JOURNALED);
+            MongoCollection<Document> collection = this.database.getCollection(collectionName)
+                    .withWriteConcern(WriteConcern.JOURNALED);
             if (collection.count() == 0) { // only if it's a new collection
-                Method m = this.getClass().getDeclaredMethod("initialize" + collectionName, MongoCollection.class);
+                Method m = this.getClass().getDeclaredMethod("initialize" + collectionName,
+                        MongoCollection.class);
                 m.invoke(this, collection);
             }
         } catch (NoSuchMethodException | SecurityException e) {
@@ -193,25 +195,33 @@ public class MongoDBConnector {
         Map<Document, Document> extL = new HashMap<>();
         Bson uFilter = Filters.in("url", linkageUrls.keySet());
         andFilter = Filters.and(cFilter, uFilter, sFilter);
-        collection.find(andFilter).projection(Projections.include("spec", "url", "website")).forEach((Document p) -> {
-            // if it's not a page in the catalog create new map entry
-                if (!websites.contains(getDomain(p.getString("url")))) {
-                    Document catalogPage = linkageUrls.get(p.getString("url"));
-                    extL.put(p, catalogPage);
-                }
-                // if it's a page in the catalog add it to the temporary list
-                else {
-                    Document rlDoc = linkageUrls.get(p.getString("url"));
-                    String urlP = p.getString("url");
-                    String urlRlDoc = linkageUrls.get(p.getString("url")).getString("url");
-                    List<Document> linkageP = intL.getOrDefault(urlP, new ArrayList<Document>());
-                    List<Document> linkageRlDoc = intL.getOrDefault(urlRlDoc, new ArrayList<Document>());
-                    linkageP.add(rlDoc);
-                    linkageRlDoc.add(p);
-                    intL.put(urlP, linkageP);
-                    intL.put(urlRlDoc, linkageRlDoc);
-                }
-            });
+        collection.find(andFilter)
+                .projection(Projections.include("spec", "url", "website"))
+                .forEach((Document p) -> {
+                    // if it's not a page in the
+                    // catalog create new map
+                    // entry
+                        if (!websites.contains(getDomain(p.getString("url")))) {
+                            Document catalogPage = linkageUrls.get(p.getString("url"));
+                            extL.put(p, catalogPage);
+                        }
+                        // if it's a page in the
+                        // catalog add it to the
+                        // temporary
+                        // list
+                        else {
+                            Document rlDoc = linkageUrls.get(p.getString("url"));
+                            String urlP = p.getString("url");
+                            String urlRlDoc = linkageUrls.get(p.getString("url")).getString("url");
+                            List<Document> linkageP = intL.getOrDefault(urlP, new ArrayList<Document>());
+                            List<Document> linkageRlDoc = intL.getOrDefault(urlRlDoc,
+                                    new ArrayList<Document>());
+                            linkageP.add(rlDoc);
+                            linkageRlDoc.add(p);
+                            intL.put(urlP, linkageP);
+                            intL.put(urlRlDoc, linkageRlDoc);
+                        }
+                    });
 
         // add internal linkage to the lists in rlMap
         for (Map.Entry<Document, Document> entry : extL.entrySet()) {
@@ -253,7 +263,8 @@ public class MongoDBConnector {
         Bson inFilter = Filters.in("url", docsToFetch);
         Bson attFilter = Filters.exists("spec." + attribute, true);
         Bson andFilter = Filters.and(inFilter, attFilter);
-        collection.find(andFilter).projection(Projections.include("spec", "url")).forEach((Document d) -> fetchedProducts.add(d));
+        collection.find(andFilter).projection(Projections.include("spec", "url"))
+                .forEach((Document d) -> fetchedProducts.add(d));
 
         // create record linkage list
         fetchedProducts.stream().forEach(d -> {
@@ -273,9 +284,10 @@ public class MongoDBConnector {
     public Map<String, List<String>> getSchemas(List<String> categories) {
         Map<String, List<String>> fetchedSchemas = new TreeMap<>();
 
-        this.database.getCollection("Schemas")
-                .find(Filters.and(Filters.in("category", categories), Filters.ne("attributes", Collections.EMPTY_LIST)))
-                .forEach((Document d) -> {
+        this.database
+                .getCollection("Schemas")
+                .find(Filters.and(Filters.in("category", categories),
+                        Filters.ne("attributes", Collections.EMPTY_LIST))).forEach((Document d) -> {
                     String website = d.getString("website");
                     String category = d.getString("category");
                     @SuppressWarnings("unchecked")
@@ -294,8 +306,8 @@ public class MongoDBConnector {
     public Document getIfValid(String url) {
         return this.database
                 .getCollection("Products")
-                .find(Filters.and(Filters.eq("url", url), Filters.ne("linkage", Collections.EMPTY_LIST), Filters.ne("spec", new Document())))
-                .first();
+                .find(Filters.and(Filters.eq("url", url), Filters.ne("linkage", Collections.EMPTY_LIST),
+                        Filters.ne("spec", new Document()))).first();
     }
 
     public String getWebsite(String url) {
@@ -312,7 +324,8 @@ public class MongoDBConnector {
     }
 
     public void insertBatch(List<Document> docs, String collectionName) {
-        MongoCollection<Document> collection = this.database.getCollection(collectionName).withWriteConcern(WriteConcern.JOURNALED);
+        MongoCollection<Document> collection = this.database.getCollection(collectionName).withWriteConcern(
+                WriteConcern.JOURNALED);
         collection.insertMany(docs);
     }
 
@@ -340,7 +353,8 @@ public class MongoDBConnector {
     @SuppressWarnings("unused")
     private void initializeProducts(MongoCollection<Document> collection) {
         Map<String, String> websites = this.fdc.getAllWebsites();
-        websites.entrySet().stream().map(this::website2Documents).filter(list -> list.size() > 0).forEach(collection::insertMany);
+        websites.entrySet().stream().map(this::website2Documents).filter(list -> list.size() > 0)
+                .forEach(collection::insertMany);
 
         addProductsIndexes(collection);
 
@@ -358,9 +372,11 @@ public class MongoDBConnector {
     private void initializeRecordLinkage(MongoCollection<Document> collection) {
         List<JSONObject> jsonList = new ArrayList<>();
         @SuppressWarnings("unchecked")
-        Collection<JSONObject> jsonCollection = Collections.checkedCollection(this.fdc.readRecordLinkage().values(), JSONObject.class);
+        Collection<JSONObject> jsonCollection = Collections.checkedCollection(this.fdc.readRecordLinkage()
+                .values(), JSONObject.class);
         jsonList.addAll(jsonCollection);
-        jsonList.stream().map(this::urls2Documents).filter(list -> list.size() > 0).forEach(collection::insertMany);
+        jsonList.stream().map(this::urls2Documents).filter(list -> list.size() > 0)
+                .forEach(collection::insertMany);
 
         collection.createIndex(Indexes.ascending("category"));
         collection.createIndex(Indexes.hashed("url1"));
@@ -415,8 +431,10 @@ public class MongoDBConnector {
                 Document d = cursor.next();
                 String u1 = d.getString("url1");
                 String u2 = d.getString("url2");
-                updates.add(new UpdateOneModel<Document>(new Document("url", u1), new Document("$push", new Document("linkage", u2))));
-                updates.add(new UpdateOneModel<Document>(new Document("url", u2), new Document("$push", new Document("linkage", u1))));
+                updates.add(new UpdateOneModel<Document>(new Document("url", u1), new Document("$push",
+                        new Document("linkage", u2))));
+                updates.add(new UpdateOneModel<Document>(new Document("url", u2), new Document("$push",
+                        new Document("linkage", u1))));
             }
         } finally {
             cursor.close();
@@ -434,7 +452,8 @@ public class MongoDBConnector {
         String website = key[0];
         String category = key[1];
 
-        return new Document("category", category).append("website", website).append("attributes", sourceSchema.getValue());
+        return new Document("category", category).append("website", website).append("attributes",
+                sourceSchema.getValue());
     }
 
     private List<Document> website2Documents(Map.Entry<String, String> website) {
@@ -458,8 +477,8 @@ public class MongoDBConnector {
         JSONObject spec = (JSONObject) json.get("spec");
         @SuppressWarnings("unchecked")
         Set<String> fields = Collections.checkedSet(spec.keySet(), String.class);
-        List<String> invalidFields = fields.stream().filter(field -> field.contains(".") || field.startsWith("$"))
-                .collect(Collectors.toList());
+        List<String> invalidFields = fields.stream()
+                .filter(field -> field.contains(".") || field.startsWith("$")).collect(Collectors.toList());
 
         for (String invField : invalidFields)
             ((JSONObject) json.get("spec")).remove(invField);
@@ -474,8 +493,8 @@ public class MongoDBConnector {
             JSONArray urls = (JSONArray) json.get(cat);
             for (int i = 0; i < urls.size() - 1; i++)
                 for (int j = i + 1; j < urls.size(); j++) {
-                    Document doc = new Document("category", (String) cat).append("url1", (String) urls.get(i)).append("url2",
-                            (String) urls.get(j));
+                    Document doc = new Document("category", (String) cat)
+                            .append("url1", (String) urls.get(i)).append("url2", (String) urls.get(j));
                     docs.add(doc);
                 }
         }

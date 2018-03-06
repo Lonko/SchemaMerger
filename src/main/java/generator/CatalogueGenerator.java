@@ -62,14 +62,17 @@ public class CatalogueGenerator {
     private void createCurves(String typeSize, String typePLinkage) {
 
         if (typeSize.equals("0"))
-            this.sizeCurve = new ConstantCurveFunction(this.maxSizeSources, this.nSources, this.minSizeSources);
+            this.sizeCurve = new ConstantCurveFunction(this.maxSizeSources, this.nSources,
+                    this.minSizeSources);
         else
-            this.sizeCurve = new RationalCurveFunction(typeSize, this.maxSizeSources, this.nSources, this.minSizeSources);
+            this.sizeCurve = new RationalCurveFunction(typeSize, this.maxSizeSources, this.nSources,
+                    this.minSizeSources);
 
         if (typePLinkage.equals("0"))
             this.productLinkageCurve = new ConstantCurveFunction(nSources, sizeCurve.getSampling());
         else
-            this.productLinkageCurve = new RationalCurveFunction(typePLinkage, this.maxLinkage, sizeCurve.getSampling());
+            this.productLinkageCurve = new RationalCurveFunction(typePLinkage, this.maxLinkage,
+                    sizeCurve.getSampling());
 
         this.nProducts = this.productLinkageCurve.getYValues().length;
     }

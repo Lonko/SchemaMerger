@@ -31,8 +31,8 @@ public class Cohordinator {
     }
 
     // cardinality parameter is currently useless
-    public Schema matchAllSourcesInCategory(List<String> orderedWebsites, String category, CategoryMatcher cm, int cardinality,
-            boolean useMI, SyntheticDatasetGenerator sdg) {
+    public Schema matchAllSourcesInCategory(List<String> orderedWebsites, String category,
+            CategoryMatcher cm, int cardinality, boolean useMI, SyntheticDatasetGenerator sdg) {
 
         Schema schema = new Schema();
         List<String> currentMatchSources = new ArrayList<>();
@@ -68,7 +68,8 @@ public class Cohordinator {
                 if (!category1.equals(category2))
                     continue;
                 List<String> attributes2 = sourceSchemas.get(source2);
-                double minSize = (attributes1.size() > attributes2.size()) ? attributes2.size() : attributes1.size();
+                double minSize = (attributes1.size() > attributes2.size()) ? attributes2.size() : attributes1
+                        .size();
                 Set<String> intersection = new HashSet<>(attributes1);
                 intersection.retainAll(attributes2);
                 if (intersection.size() >= (minSize / 2)) {
@@ -96,7 +97,8 @@ public class Cohordinator {
         return trainingSets;
     }
 
-    public void evaluateSyntheticResults(List<List<String>> clusters, Map<String, Integer> expectedClusterSizes) {
+    public void evaluateSyntheticResults(List<List<String>> clusters,
+            Map<String, Integer> expectedClusterSizes) {
         DynamicCombinationsCalculator dcc = new DynamicCombinationsCalculator();
         int truePositives = 0, falsePositives = 0, expectedPositives = 0;
         double p, r, f;
@@ -116,7 +118,8 @@ public class Cohordinator {
                         .collect(Collectors.groupingBy(Function.identity(), Collectors.counting())).values();
                 List<Long> counters = new ArrayList<>(cCollection);
                 // true positives
-                truePositives += counters.stream().mapToInt(Long::intValue).map(c -> dcc.calculateCombinations(c, 2)).sum();
+                truePositives += counters.stream().mapToInt(Long::intValue)
+                        .map(c -> dcc.calculateCombinations(c, 2)).sum();
                 // false positives
                 falsePositives += counters.stream().mapToInt(Long::intValue).map(c -> c * (size - c)).sum();
             }
@@ -161,7 +164,8 @@ public class Cohordinator {
                 System.out.println("FINE LOADING DEL MODEL");
             } else {
                 System.out.println("INIZIO GENERAZIONE TRAINING SET");
-                Map<String, List<String>> tSet = c.generateTrainingSets(mdbc, config.getCategories(), new HashMap<String, List<String>>());
+                Map<String, List<String>> tSet = c.generateTrainingSets(mdbc, config.getCategories(),
+                        new HashMap<String, List<String>>());
                 fdc.printTrainingSet("trainingSet", tSet.get("fakeCategory"));
                 System.out.println("FINE GENERAZIONE TRAINING SET - INIZIO TRAINING");
                 r.train(config.getTrainingSetPath() + "/trainingSet.csv", config.getModelPath());
@@ -171,7 +175,8 @@ public class Cohordinator {
             // Classification
             System.out.println("INIZIO GENERAZIONE SCHEMA");
             CategoryMatcher cm = new CategoryMatcher(mdbc, r);
-            Schema schema = c.matchAllSourcesInCategory(sdg.getSourcesByLinkage(), "fakeCategory", cm, 0, true, sdg);
+            Schema schema = c.matchAllSourcesInCategory(sdg.getSourcesByLinkage(), "fakeCategory", cm, 0,
+                    true, sdg);
             fdc.printMatchSchema("clusters", schema);
             System.out.println("FINE GENERAZIONE SCHEMA");
 

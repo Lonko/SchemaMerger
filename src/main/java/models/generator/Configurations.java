@@ -74,8 +74,9 @@ public class Configurations {
         // check if the number of classes is the same as the number of
         // percentages
         if (cardClasses.length != cards.length || tokensClasses.length != tokens.length) {
-            throw new IllegalArgumentException("Card Classes: " + cardClasses.length + "\tPercentages :" + cards.length + "\n"
-                    + "Token Classes: " + tokensClasses.length + "\tPercentages : " + tokens.length);
+            throw new IllegalArgumentException("Card Classes: " + cardClasses.length + "\tPercentages :"
+                    + cards.length + "\n" + "Token Classes: " + tokensClasses.length + "\tPercentages : "
+                    + tokens.length);
         }
 
         this.cardinalityClasses = new String[cards.length];
@@ -100,7 +101,8 @@ public class Configurations {
         }
 
         if (totalCard != 100 || totalTokens != 100)
-            throw new IllegalArgumentException("Cardinality Total: " + totalCard + "\n" + "Token Total: " + totalTokens);
+            throw new IllegalArgumentException("Cardinality Total: " + totalCard + "\n" + "Token Total: "
+                    + totalTokens);
     }
 
     public int getMaxPages() {

@@ -41,7 +41,8 @@ public class CategoryMatcher {
         this.r = r;
     }
 
-    public boolean getMatch(List<String> websites, String category, int cardinality, Schema schemaMatch, boolean useMI) {
+    public boolean getMatch(List<String> websites, String category, int cardinality, Schema schemaMatch,
+            boolean useMI) {
         boolean matched = false;
         // last website is the one to be matched with the catalog
         String newSource = websites.remove(websites.size() - 1);
@@ -56,7 +57,8 @@ public class CategoryMatcher {
             InvertedIndexesManager invIndexes = getInvertedIndexes(linkedProds, newSource);
 
             Map<String, Integer> attributesLinkage = new HashMap<>();
-            DataFrame dataFrame = computeAttributesFeatures(linkedProds, invIndexes, cardinality, newSource, attributesLinkage, useMI);
+            DataFrame dataFrame = computeAttributesFeatures(linkedProds, invIndexes, cardinality, newSource,
+                    attributesLinkage, useMI);
             try {
                 double[] predictions = r.classify(dataFrame);
                 Match match = filterMatch(dataFrame, predictions);
@@ -131,16 +133,21 @@ public class CategoryMatcher {
         String website = p.getString("website");
         Document newSpecs = new Document();
         // update attribute names to the format "attribute###website"
-        specs.keySet().forEach(attr -> {
-            if (!attr.contains("###")) {
-                if (notInCatalog) {
-                    int counter = schema.getTotalLinkage().getOrDefault(attr + "###" + website, 0) + 1;
-                    schema.getTotalLinkage().put(attr + "###" + website, counter);
-                }
-                String value = specs.getString(attr);
-                newSpecs.append(schema.getAttributesMap().getOrDefault(attr + "###" + website, attr + "###" + website), value);
-            }
-        });
+        specs.keySet()
+                .forEach(
+                        attr -> {
+                            if (!attr.contains("###")) {
+                                if (notInCatalog) {
+                                    int counter = schema.getTotalLinkage().getOrDefault(
+                                            attr + "###" + website, 0) + 1;
+                                    schema.getTotalLinkage().put(attr + "###" + website, counter);
+                                }
+                                String value = specs.getString(attr);
+                                newSpecs.append(
+                                        schema.getAttributesMap().getOrDefault(attr + "###" + website,
+                                                attr + "###" + website), value);
+                            }
+                        });
         p.put("spec", newSpecs);
     }
 
@@ -192,8 +199,9 @@ public class CategoryMatcher {
         return invIndexes;
     }
 
-    private DataFrame computeAttributesFeatures(List<Document[]> linkedProds, InvertedIndexesManager invIndexes, int cardinality,
-            String website, Map<String, Integer> attributesLinkage, boolean useMI) {
+    private DataFrame computeAttributesFeatures(List<Document[]> linkedProds,
+            InvertedIndexesManager invIndexes, int cardinality, String website,
+            Map<String, Integer> attributesLinkage, boolean useMI) {
 
         DataFrame df = new DataFrame();
         // Set<String> attrSet = new TreeSet<>();
@@ -250,7 +258,8 @@ public class CategoryMatcher {
     // }
     // }
 
-    public Features computeFeatures(List<Document[]> sList, List<Document[]> cList, String a1, String a2, boolean useMI) {
+    public Features computeFeatures(List<Document[]> sList, List<Document[]> cList, String a1, String a2,
+            boolean useMI) {
 
         Features features = new Features();
         BagsOfWordsManager sBags = new BagsOfWordsManager(a1, a2, sList);
@@ -277,16 +286,21 @@ public class CategoryMatcher {
 
     // calls hasSmallDomain using all the products pages in website with the
     // relevant attribute
-    private boolean checkSourceDomain(List<Document[]> prods, String attribute, String website, int cardinality) {
+    private boolean checkSourceDomain(List<Document[]> prods, String attribute, String website,
+            int cardinality) {
         List<Document[]> sourceList = prods
                 .stream()
-                // NEL CATALOGO WEBSITE POTREBBE NON ESSERE PIù RILEVANTE !!!!!
+                // NEL CATALOGO WEBSITE POTREBBE
+                // NON ESSERE PIù
+                // RILEVANTE !!!!!
                 .filter(couple -> couple[1].getString("website").equals(website)
-                        && couple[1].get("spec", Document.class).getString(attribute) != null).collect(Collectors.toList());
+                        && couple[1].get("spec", Document.class).getString(attribute) != null)
+                .collect(Collectors.toList());
         return hasSmallDomain(sourceList, attribute, true, cardinality);
     }
 
-    private boolean hasSmallDomain(List<Document[]> prods, String attribute, boolean isInSource, int cardinality) {
+    private boolean hasSmallDomain(List<Document[]> prods, String attribute, boolean isInSource,
+            int cardinality) {
         Set<String> values = new HashSet<>();
 
         for (int i = 0; i < prods.size(); i++) {
@@ -325,12 +339,14 @@ public class CategoryMatcher {
 
     private List<Double> filterFalse(DataFrame df, double[] predictions) {
         List<Double> predictionsList = new ArrayList<>();
-        List<Integer> indexes = IntStream.range(0, predictions.length).mapToObj(Integer.class::cast).collect(Collectors.toList());
+        List<Integer> indexes = IntStream.range(0, predictions.length).mapToObj(Integer.class::cast)
+                .collect(Collectors.toList());
 
-        predictionsList = IntStream.range(0, predictions.length).filter(i -> predictions[i] >= 0.5).mapToObj(i -> {
-            indexes.remove(indexes.indexOf(i));
-            return predictions[i];
-        }).collect(Collectors.toList());
+        predictionsList = IntStream.range(0, predictions.length).filter(i -> predictions[i] >= 0.5)
+                .mapToObj(i -> {
+                    indexes.remove(indexes.indexOf(i));
+                    return predictions[i];
+                }).collect(Collectors.toList());
 
         // indexes.stream().forEach(i -> {
         // if(df.getAttrCatalog().get(i).equals(df.getAttrSource().get(i)))
@@ -391,7 +407,8 @@ public class CategoryMatcher {
      * (even those not matched) and new attributes from the catalog (if there
      * are)
      */
-    public void updateSchema(Schema schema, InvertedIndexesManager invIndexes, Match match, Map<String, Integer> attributesLinkage) {
+    public void updateSchema(Schema schema, InvertedIndexesManager invIndexes, Match match,
+            Map<String, Integer> attributesLinkage) {
         // add new catalog's attribute
         for (String catAttr : invIndexes.getCatalogIndex().keySet())
             if (!schema.getAttributesMap().containsKey(catAttr))
