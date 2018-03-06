@@ -38,6 +38,7 @@ public class SourcesGenerator {
     private CurveFunction productLinkage;
     private int nSources;
     private int nAttributes;
+    private List<String> categories;
     // Map <Source, ids of products in source>
     private Map<String, List<Integer>> source2Ids = new HashMap<>();
     // Map <id, Sources in which it appears>
@@ -77,6 +78,7 @@ public class SourcesGenerator {
         this.differentRepresentation = conf.getDifferentRepresentationChance();
         this.missingLinkage = conf.getMissingLinkageChance();
         this.linkageError = conf.getLinkageErrorChance();
+        this.categories = conf.getCategories();
 
         if (curveType.equals("0"))
             this.aExtLinkageCurve = new ConstantCurveFunction(this.nSources, this.nAttributes, 1);
@@ -427,7 +429,7 @@ public class SourcesGenerator {
                     }
                 }
 
-            page.append("category", "fakeCategory");
+            page.append("category", this.categories.get(0));
             page.append("url", source + "/" + id + "/");
             page.append("spec", newSpecs);
             page.append("linkage", linkage);

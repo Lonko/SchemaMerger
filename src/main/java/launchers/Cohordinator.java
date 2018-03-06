@@ -157,6 +157,7 @@ public class Cohordinator {
         // Training / model loading
         boolean alreadyTrained = true;
         r.start();
+        List<String> categories = config.getCategories();
         try {
             if (alreadyTrained) {
                 System.out.println("LOADING DEL MODEL");
@@ -164,9 +165,9 @@ public class Cohordinator {
                 System.out.println("FINE LOADING DEL MODEL");
             } else {
                 System.out.println("INIZIO GENERAZIONE TRAINING SET");
-                Map<String, List<String>> tSet = c.generateTrainingSets(mdbc, config.getCategories(),
+                Map<String, List<String>> tSet = c.generateTrainingSets(mdbc, categories,
                         new HashMap<String, List<String>>());
-                fdc.printTrainingSet("trainingSet", tSet.get("fakeCategory"));
+                fdc.printTrainingSet("trainingSet", tSet.get(categories.get(0)));
                 System.out.println("FINE GENERAZIONE TRAINING SET - INIZIO TRAINING");
                 r.train(config.getTrainingSetPath() + "/trainingSet.csv", config.getModelPath());
                 System.out.println("FINE TRAINING");
@@ -175,7 +176,7 @@ public class Cohordinator {
             // Classification
             System.out.println("INIZIO GENERAZIONE SCHEMA");
             CategoryMatcher cm = new CategoryMatcher(mdbc, r);
-            Schema schema = c.matchAllSourcesInCategory(sdg.getSourcesByLinkage(), "fakeCategory", cm, 0,
+            Schema schema = c.matchAllSourcesInCategory(sdg.getSourcesByLinkage(), categories.get(0), cm, 0,
                     true, sdg);
             fdc.printMatchSchema("clusters", schema);
             System.out.println("FINE GENERAZIONE SCHEMA");
