@@ -121,12 +121,6 @@ public class RConnector {
 			e.printStackTrace();
 		} catch (REngineException e) {
 			e.printStackTrace();
-			try {
-				System.in.read();
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}
-			System.out.println(df.getJSDs().toString());
 		}
 
 	    return predictions;
