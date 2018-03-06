@@ -38,7 +38,7 @@ public class SyntheticDatasetGenerator {
     public SyntheticDatasetGenerator() {
         this.fdc = new FileDataConnector();
         this.conf = new Configurations(fdc.readConfig());
-        this.mdbc = new MongoDBConnector(conf.getMongoURI(), conf.getDatasetName(), this.fdc);
+        this.mdbc = new MongoDBConnector(conf.getMongoURI(), conf.getDatabaseName(), this.fdc);
         String path = conf.getStringPathFile();
         if (path.equals(""))
             this.sg = new RandomStringGenerator(SOURCE_NAME_LENGTH, ATTRIBUTE_NAME_LENGTH, TOKEN_LENGTH);

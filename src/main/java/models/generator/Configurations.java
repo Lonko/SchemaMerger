@@ -11,7 +11,7 @@ public class Configurations {
     private String recordLinkagePath;
     private String trainingSetPath;
     private String mongoURI;
-    private String datasetName;
+    private String databaseName;
     private String modelPath;
     private List<String> categories;
 
@@ -41,7 +41,7 @@ public class Configurations {
         this.recordLinkagePath = prop.getProperty("recordLinkagePath");
         this.trainingSetPath = prop.getProperty("trainingSetPath");
         this.mongoURI = prop.getProperty("mongoURI");
-        this.datasetName = prop.getProperty("datasetName");
+        this.databaseName = prop.getProperty("databaseName");
         this.modelPath = prop.getProperty("modelPath");
         this.categories = Arrays.asList(prop.getProperty("categories").split("/"));
 
@@ -273,12 +273,12 @@ public class Configurations {
         this.mongoURI = mongoURI;
     }
 
-    public String getDatasetName() {
-        return datasetName;
+    public String getDatabaseName() {
+        return databaseName;
     }
 
-    public void setDatasetName(String datasetName) {
-        this.datasetName = datasetName;
+    public void setDatabaseName(String databaseName) {
+        this.databaseName = databaseName;
     }
 
     public String getModelPath() {

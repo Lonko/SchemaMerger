@@ -142,7 +142,7 @@ public class Cohordinator {
         fdc.setDatasetPath(config.getDatasetPath());
         fdc.setRlPath(config.getRecordLinkagePath());
         fdc.setTsPath(config.getTrainingSetPath());
-        MongoDBConnector mdbc = new MongoDBConnector(config.getMongoURI(), config.getDatasetName(), fdc);
+        MongoDBConnector mdbc = new MongoDBConnector(config.getMongoURI(), config.getDatabaseName(), fdc);
         RConnector r = new RConnector();
         Cohordinator c = new Cohordinator();
         System.out.println("FINE SETUP");
