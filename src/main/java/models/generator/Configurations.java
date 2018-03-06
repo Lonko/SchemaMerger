@@ -32,6 +32,7 @@ public class Configurations {
 	private double randomErrorChance;
 	private double differentFormatChance;
 	private double differentRepresentationChance;
+	private double missingLinkageChance;
 	private double linkageErrorChance;
 
 	public Configurations(Properties prop){
@@ -55,6 +56,7 @@ public class Configurations {
 		this.randomErrorChance = Double.valueOf(prop.getProperty("randomError"));
 		this.differentFormatChance = Double.valueOf(prop.getProperty("formatChance"));
 		this.differentRepresentationChance = Double.valueOf(prop.getProperty("representationChance"));
+		this.missingLinkageChance = Double.valueOf(prop.getProperty("missingLinkage"));
 		this.linkageErrorChance = Double.valueOf(prop.getProperty("linkageError"));
 		loadPercentages(prop);
 		String path = prop.getProperty("stringFilePath");
@@ -224,6 +226,14 @@ public class Configurations {
 		this.differentRepresentationChance = differentRepresentationChance;
 	}
 
+    public double getMissingLinkageChance() {
+        return missingLinkageChance;
+    }
+
+    public void setMissingLinkageChance(double missingLinkageChance) {
+        this.missingLinkageChance = missingLinkageChance;
+    }
+    
 	public double getLinkageErrorChance() {
 		return linkageErrorChance;
 	}
