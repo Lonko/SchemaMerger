@@ -181,7 +181,7 @@ public class CatalogueGenerator {
 	private Document generateProduct(int id){
 		Document prod = new Document();
 		Document specs = new Document();
-		prod.append("_id", id);
+		prod.append("id", id);
 		prod.append("category", "fakeCategory");
 		
 		for(Map.Entry<String, List<String>> attribute : this.attrValues.entrySet()){
