@@ -1,5 +1,6 @@
 package matcher;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -20,7 +21,6 @@ import models.matcher.Schema;
 
 import org.bson.Document;
 
-import connectors.FileDataConnector;
 import connectors.MongoDBConnector;
 import connectors.RConnector;
 
@@ -41,29 +41,55 @@ public class CategoryMatcher {
 		this.r = r;
 	}
 	
-	public Match getMatch(List<String> websites, String category, int cardinality, Schema schemaMatch, boolean useMI){
-		//last website is the one to be matched with the catalog
+	public boolean getMatch(List<String> websites, String category, int cardinality, Schema schemaMatch, boolean useMI){
+	    boolean matched = false;
+	    //last website is the one to be matched with the catalog
 		String newSource = websites.remove(websites.size()-1);
 		//linked page -> pages in catalog
 		Map<Document, List<Document>> linkageMap = this.mdbc.getProdsInRL(websites, category);
-		//pages in catalog(merged) -> linked page
-		List<Document[]> linkedProds = setupCatalog(linkageMap, schemaMatch);
-		
-		//Inverted indexes (attribute name -> indexes of prods)
-		InvertedIndexesManager invIndexes = getInvertedIndexes(linkedProds, newSource);
+		//check if new source is matchable
+		if(checkIfValidSource(newSource, linkageMap.keySet())){
+		    //pages in catalog(merged) -> linked page
+		    List<Document[]> linkedProds = setupCatalog(linkageMap, schemaMatch);
 
-		Map<String, Integer> attributesLinkage = new HashMap<>();
-		DataFrame dataFrame = computeAttributesFeatures(linkedProds, invIndexes, cardinality,
-														newSource, attributesLinkage, useMI);
-		double[] predictions = r.classify(dataFrame);
-		Match match = filterMatch(dataFrame, predictions);
+		    //Inverted indexes (attribute name -> indexes of prods)
+		    InvertedIndexesManager invIndexes = getInvertedIndexes(linkedProds, newSource);
+
+		    Map<String, Integer> attributesLinkage = new HashMap<>();
+		    DataFrame dataFrame = computeAttributesFeatures(linkedProds, invIndexes, cardinality,
+		            newSource, attributesLinkage, useMI);
+		    try{
+		    double[] predictions = r.classify(dataFrame);
+            Match match = filterMatch(dataFrame, predictions);
+
+            updateSchema(schemaMatch, invIndexes, match, attributesLinkage);
+            
+            matched = true; 
+		    }catch(Exception e){
+		        System.out.println("CON LINKAGE -> "+checkIfValidSource(newSource, linkageMap.keySet()));
+		        System.out.println("(df di lunghezza : "+dataFrame.getAttrCatalog().size()+")");
+		    }
+		}
 		
-		updateSchema(schemaMatch, invIndexes, match, attributesLinkage);
-		
-		return match;
+		//if false the match was skipped
+		return matched;
 	}
 	
-	//update all products pages' attribute names and fuses catalog prods in linkageS
+	//check if among the linked pages there's at least one belonging to the new source
+	boolean checkIfValidSource(String source, Set<Document> linkedPages){
+	    boolean foundSourcePage = false;
+	    
+	    for(Document page : linkedPages){
+	        if(page.getString("url").contains(source)){
+	            foundSourcePage = true;
+	            break;
+	        }
+	    }
+	    
+	    return foundSourcePage;
+	}
+	
+	//update all products pages' attribute names and merges catalog prods in linkageS
 	private List<Document[]> setupCatalog(Map<Document, List<Document>> prods, Schema schema){
 		List<Document[]> updatedList = new ArrayList<>();
 		
@@ -98,14 +124,14 @@ public class CategoryMatcher {
 	}
 	
 	//update attribute names of a single product page
-	private void updateSpecs(Document p, Schema schema, boolean isInCatalog){
+	private void updateSpecs(Document p, Schema schema, boolean notInCatalog){
 		Document specs = p.get("spec", Document.class);
 		String website = p.getString("website");
 		Document newSpecs = new Document();
 		//update attribute names to the format "attribute###website"
 		specs.keySet().forEach(attr -> {
 			if(!attr.contains("###")){
-				if(isInCatalog){
+				if(notInCatalog){
 					int counter = schema.getTotalLinkage()
 							  			.getOrDefault(attr+"###"+website, 0) + 1;
 					schema.getTotalLinkage().put(attr+"###"+website, counter);
@@ -130,7 +156,7 @@ public class CategoryMatcher {
 			//get the attributes present in those 2 pages
 			Set<String> attrsCatalog = pair[0].get("spec", Document.class).keySet();
 			Set<String> attrsLinked = pair[1].get("spec", Document.class).keySet();
-			//get the website of the linked page
+			//check the website of the linked page
 			boolean isInSource = pair[1].getString("website").equals(website);
 			
 			//add the attributes in the catalog's index
@@ -159,8 +185,6 @@ public class CategoryMatcher {
 		invIndexes.setCatalogIndex(invIndCatalog);
 		invIndexes.setLinkedIndex(invIndLinked);
 		invIndexes.setSourceIndex(invIndSource);
-		System.out.println(invIndCatalog.size());
-		System.out.println(invIndLinked.size());
 		System.out.println("Attributes Source :"+invIndSource.size());
 		System.out.println("Page in linkage with the new source: "+linkedCounter);
 		
@@ -172,9 +196,9 @@ public class CategoryMatcher {
 										boolean useMI){
 		
 		DataFrame df = new DataFrame();
-		Set<String> attrSet = new TreeSet<>();
+//		Set<String> attrSet = new TreeSet<>();
 		
-		//scorri il prod cartesiano di attributiS1 x attributiS2
+		//scorri il prod cartesiano di attributiS x attributiC
 		for(Map.Entry<String, Set<Integer>> attrS : invIndexes.getSourceIndex().entrySet())
 			for(Map.Entry<String, Set<Integer>> attrCatalog : invIndexes.getCatalogIndex().entrySet()){
 				String aCatalog = attrCatalog.getKey();
@@ -207,7 +231,7 @@ public class CategoryMatcher {
 				df.addRow(features, aCatalog, aSource);
 			}
 		
-		System.out.println("Considerati: " + attrSet.size());
+//		System.out.println("Considerati: " + attrSet.size());
 //		System.out.println(attrSet.toString());
 		
 		return df;
@@ -362,7 +386,7 @@ public class CategoryMatcher {
 		return indexes.values().size() > 0;
 	}
 	
-	/* The update consist in adding every attribute found in the matched source (even those not matched)
+	/* The update consists in adding every attribute found in the matched source (even those not matched)
 	 * and new attributes from the catalog (if there are) 
 	 */
 	public void updateSchema(Schema schema, InvertedIndexesManager invIndexes,
