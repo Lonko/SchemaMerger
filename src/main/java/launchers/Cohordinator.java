@@ -1,45 +1,49 @@
 package launchers;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.function.Function;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.bson.Document;
 
 import matcher.CategoryMatcher;
+import matcher.DynamicCombinationsCalculator;
 import matcher.FeatureExtractor;
 import matcher.TrainingSetGenerator;
 import models.generator.Configurations;
-import models.matcher.Match;
 import models.matcher.Schema;
 import connectors.FileDataConnector;
 import connectors.MongoDBConnector;
 import connectors.RConnector;
 
 public class Cohordinator {
-	
+    
 	public Cohordinator(){
 		
 	}	
 	
 	//cardinality parameter is currently useless
 	public Schema matchAllSourcesInCategory(List<String> orderedWebsites, String category,
-													CategoryMatcher cm, int cardinality, boolean useMI){
+													CategoryMatcher cm, int cardinality, boolean useMI, SyntheticDatasetGenerator sdg){
 		
 		Schema schema = new Schema();
 		List<String> currentMatchSources = new ArrayList<>();
 		currentMatchSources.add(orderedWebsites.get(0));
-		
 		//match su tutte le altre sorgenti
 		for(int i = 1; i < orderedWebsites.size(); i++){
-			System.out.println(orderedWebsites.get(i).toUpperCase());
+			System.out.println("-->"+orderedWebsites.get(i)+"<-- ("+i+")");
 			currentMatchSources.add(orderedWebsites.get(i));
-			Match newMatch = cm.getMatch(currentMatchSources, category, cardinality, schema, useMI);
+			if(!cm.getMatch(currentMatchSources, category, cardinality, schema, useMI)){
+			    System.out.println("NO MATCH");
+			}
 		}
 		
 		return schema;
@@ -86,10 +90,51 @@ public class Cohordinator {
 		
 		for(String category : categories){
 			System.out.println(category.toUpperCase());
-			trainingSets.put(category, tsg.getTrainingSetWithTuples(750, 20000, false, true, 0.25, category));
+			trainingSets.put(category, tsg.getTrainingSetWithTuples(500, 15000, false, true, 0.25, category));
 		}
 		
 		return trainingSets;
+	}
+	
+	public void evaluateSyntheticResults(List<List<String>> clusters, Map<String, Integer> expectedClusterSizes){
+	    DynamicCombinationsCalculator dcc = new DynamicCombinationsCalculator();
+	    int truePositives = 0, falsePositives = 0, expectedPositives = 0;
+	    double p, r, f;
+	    
+	    //calculate expected positives
+	    for(int clusterSize : expectedClusterSizes.values())
+            //cluster of cardinality == 1 are not considered
+	        if(clusterSize > 1)
+	            expectedPositives += dcc.calculateCombinations(clusterSize, 2);
+	    
+	    //calculate true and false positives
+	    for(List<String> cluster : clusters){
+	        int size = cluster.size();
+	        //cluster of cardinality == 1 are not considered
+	        if(size > 1){
+	            Collection<Long> cCollection = cluster.stream()
+	                    .map(attr -> attr.split("###")[0])
+	                    .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
+	                    .values();
+	            List<Long> counters = new ArrayList<>(cCollection);
+	            //true positives
+	            truePositives += counters.stream().mapToInt(Long::intValue)
+	                    .map(c -> dcc.calculateCombinations(c, 2))
+	                    .sum();
+	            //false positives
+	            falsePositives += counters.stream().mapToInt(Long::intValue)
+	                    .map(c -> c*(size-c))
+	                    .sum();
+	        }
+	    }
+	    
+	    p = truePositives / (double)(truePositives + falsePositives);
+	    r = truePositives / (double)(expectedPositives);
+	    f = 2 * (p * r) / (p + r);
+        
+	    System.out.println("PRECISION = " + p);
+        System.out.println("RECALL = " + r);
+        System.out.println("F-MEASURE = " + f);
 	}
 	
 	public static void main(String[] args){
@@ -115,6 +160,7 @@ public class Cohordinator {
 		//Training / model loading
 		boolean alreadyTrained = true;
 		r.start();
+		try{
 		if(alreadyTrained){
 			System.out.println("LOADING DEL MODEL");
 			r.loadModel(config.getModelPath());
@@ -130,10 +176,19 @@ public class Cohordinator {
 		}
 		
 		//Classification
+        System.out.println("INIZIO GENERAZIONE SCHEMA");
 		CategoryMatcher cm = new CategoryMatcher(mdbc, r);
-		fdc.printMatchSchema("clusters", c.matchAllSourcesInCategory(sdg.getSources(), "fakeCategory", cm, 0, true));
-		
-		//Result Evaluation
+		Schema schema = c.matchAllSourcesInCategory(sdg.getSourcesByLinkage(), "fakeCategory", cm, 0, true, sdg);
+		fdc.printMatchSchema("clusters", schema);
+        System.out.println("FINE GENERAZIONE SCHEMA");
+
+        //Result Evaluation
+        System.out.println("INIZIO VALUTAZIONE RISULTATI");
+        c.evaluateSyntheticResults(schema.schema2Clusters(), sdg.getAttrLinkage());
+        System.out.println("FINE VALUTAZIONE RISULTATI");
+		} finally {
+			r.stop();
+		}
 		
 	}
 	
