@@ -526,11 +526,13 @@ public class SourcesGenerator {
     }
 
     // generates the complete sources and returns attributes' linkage info
-    public Map<String, Integer> createSources(List<String> sourcesNames) {
+    public Map<String, Integer> createSources(List<String> sourcesNames, boolean delete) {
         List<Document> sourcePages;
 
         // generates sources
-        this.mdbc.dropCollection("Products");
+        if(delete)
+            this.mdbc.dropCollection("Products");
+        
         for (int i = 0; i < sourcesNames.size(); i++) {
             String source = sourcesNames.get(i);
             int size = this.sourceSizes.getYValues()[i];

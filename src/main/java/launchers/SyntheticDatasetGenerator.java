@@ -6,9 +6,11 @@ import generator.RandomStringGenerator;
 import generator.SourcesGenerator;
 import generator.StringGenerator;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 
 import org.bson.Document;
 
@@ -58,8 +60,10 @@ public class SyntheticDatasetGenerator {
     }
 
     // upload Catalogue to MongoDB in batches
-    private void uploadCatalogue(List<Document> catalogue) {
-        this.mdbc.dropCollection("Catalogue");
+    private void uploadCatalogue(List<Document> catalogue, boolean delete) {
+        if(delete)
+            this.mdbc.dropCollection("Catalogue");
+        
         int uploadedProds = 0;
 
         // each iteration is a batch of products to upload
@@ -77,10 +81,10 @@ public class SyntheticDatasetGenerator {
     }
 
     // generate and upload catalogue
-    public void generateCatalogue() {
+    public void generateCatalogue(boolean delete) {
         CatalogueGenerator cg = new CatalogueGenerator(this.conf, this.sg);
         List<Document> catalogue = cg.createCatalogue();
-        uploadCatalogue(catalogue);
+        uploadCatalogue(catalogue, delete);
         this.sizes = cg.getSizeCurve();
         this.prodLinkage = cg.getProductLinkageCurve();
         this.attrFixedTokens = cg.getAttrFixedToken();
@@ -88,11 +92,11 @@ public class SyntheticDatasetGenerator {
     }
 
     // generate and upload sources
-    public void generateSources() {
+    public void generateSources(boolean delete) {
         SourcesGenerator sg = new SourcesGenerator(this.mdbc, this.conf, this.sg, this.sizes,
                 this.prodLinkage, this.attrFixedTokens, this.attrValues);
         this.sourcesBySize = sg.prepareSources();
-        this.attrLinkage = sg.createSources(this.sourcesBySize);
+        this.attrLinkage = sg.createSources(this.sourcesBySize, delete);
         this.sourcesByLinkage = sg.getLinkageOrder(this.sourcesBySize);
     }
 
@@ -123,11 +127,14 @@ public class SyntheticDatasetGenerator {
 
     public static void main(String[] args) {
         SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator();
+        System.out.println("DELETE EXISTING DATASET? (Y/N)");
+        Scanner scanner = new Scanner(System.in);
+        boolean delete = Character.toLowerCase(scanner.next().charAt(0)) == 'y';
 
         long start = System.currentTimeMillis();
-        sdg.generateCatalogue();
+        sdg.generateCatalogue(delete);
         long middle = System.currentTimeMillis();
-        sdg.generateSources();
+        sdg.generateSources(delete);
         long end = System.currentTimeMillis();
         long timeForCatalogue = middle - start;
         long timeForDataset = end - middle;

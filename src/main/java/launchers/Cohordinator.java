@@ -150,8 +150,8 @@ public class Cohordinator {
         // Synthetic dataset generation
         System.out.println("INIZIO GENERAZIONE DATASET");
         SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator(fdc, mdbc, config);
-        sdg.generateCatalogue();
-        sdg.generateSources();
+        sdg.generateCatalogue(false);
+        sdg.generateSources(false);
         System.out.println("FINE GENERAZIONE DATASET");
 
         // Training / model loading
