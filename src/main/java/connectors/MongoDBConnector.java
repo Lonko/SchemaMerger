@@ -25,6 +25,7 @@ import org.json.simple.JSONObject;
 
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
+import com.mongodb.WriteConcern;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -69,6 +70,10 @@ public class MongoDBConnector {
 		this.database = this.mc.getDatabase(dbName);
 	}
 	
+	public long countCollection(String collectionName){
+	    return this.database.getCollection(collectionName).count();
+	}
+	
 	public void initializeAllCollections(){
 		initializeCollection("Products");
 		initializeCollection("RecordLinkage");
@@ -79,7 +84,8 @@ public class MongoDBConnector {
 	public void initializeCollection(String collectionName){
 		
 		try {
-			MongoCollection<Document> collection = this.database.getCollection(collectionName);
+			MongoCollection<Document> collection = this.database.getCollection(collectionName)
+                                                                .withWriteConcern(WriteConcern.JOURNALED);
 			if(collection.count() == 0){ //only if it's a new collection
 				Method m = this.getClass().getDeclaredMethod("initialize"+collectionName, MongoCollection.class);
 				m.invoke(this, collection);
@@ -176,7 +182,7 @@ public class MongoDBConnector {
 		List<Document> prods = new ArrayList<>();
 		collection.aggregate(Arrays.asList(matchBson, unwindBson))
 		  		  .forEach((Document d) -> prods.add(d));
-		
+        
 		//create map <URL of a linked page, page in catalog>
 		Map<String, Document> linkageUrls = new HashMap<>();
 		prods.stream().forEach(p -> linkageUrls.put(p.getString("linkage"), p));
@@ -188,7 +194,7 @@ public class MongoDBConnector {
 		Map<Document, Document> extL = new HashMap<>();
 		Bson uFilter = Filters.in("url", linkageUrls.keySet());
 		andFilter = Filters.and(cFilter, uFilter, sFilter);
-		collection.find(andFilter)
+		collection.find(andFilter).projection(Projections.include("spec", "url", "website"))
 				  .forEach(
 					(Document p) -> {
 						//if it's not a page in the catalog create new map entry
@@ -223,7 +229,7 @@ public class MongoDBConnector {
 		//<linked page, list of pages in catalog>
 		return rlMap;		
 	}
-	
+
 	//used in the Training Set generation
 	public List<Document[]> getProdsInRL(List<Document> prods, String website, String attribute){
 		Map<String, List<Integer>> rlMap = new HashMap<>();
@@ -315,7 +321,8 @@ public class MongoDBConnector {
 	}
 	
 	public void insertBatch(List<Document> docs, String collectionName){
-		MongoCollection<Document> collection = this.database.getCollection(collectionName);
+		MongoCollection<Document> collection = this.database.getCollection(collectionName)
+		                                                    .withWriteConcern(WriteConcern.JOURNALED);
 		collection.insertMany(docs);
 	}
 	
@@ -323,7 +330,7 @@ public class MongoDBConnector {
 	public List<Document> getFromCatalogue(List<Integer> ids){
 		List<Document> products = new ArrayList<>();
 		MongoCollection<Document> collection = this.database.getCollection("Catalogue");
-		collection.find(Filters.in("_id", ids))
+		collection.find(Filters.in("id", ids))
 					.forEach((Document d)-> products.add(d));
 		
 		return products;
