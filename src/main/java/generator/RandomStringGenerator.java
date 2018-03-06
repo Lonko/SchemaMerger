@@ -3,89 +3,87 @@ package generator;
 import java.util.Random;
 
 public class RandomStringGenerator implements StringGenerator {
-	
-	private int sourceLength;
-	private int attributeLength;
-	private int valueLength;
-	private String allowedChars = "abcdefghijklmnopqrstuvwxyz"
-									+"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-									+"0123456789";
-	private char[] chars;
-	
-	public RandomStringGenerator(int sourceLength, int attributeLength, int valueLength){
-		this.sourceLength = sourceLength;
-		this.attributeLength = attributeLength;
-		this.valueLength = valueLength;
-		this.chars = allowedChars.toCharArray();
-	}
 
-	@Override
-	public String generateSourceName() {
-		StringBuilder sb = new StringBuilder(this.sourceLength);
-		Random random = new Random();
-		for (int i = 0; i < this.sourceLength; i++) {
-			char c = this.chars[random.nextInt(this.chars.length)];
-			sb.append(c);
-		}
+    private int sourceLength;
+    private int attributeLength;
+    private int valueLength;
+    private String allowedChars = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789";
+    private char[] chars;
 
-		return sb.toString();
-	}
+    public RandomStringGenerator(int sourceLength, int attributeLength, int valueLength) {
+        this.sourceLength = sourceLength;
+        this.attributeLength = attributeLength;
+        this.valueLength = valueLength;
+        this.chars = allowedChars.toCharArray();
+    }
 
-	@Override
-	public String generateAttributeName() {
-		StringBuilder sb = new StringBuilder(this.attributeLength);
-		Random random = new Random();
-		for (int i = 0; i < this.attributeLength; i++) {
-			char c = this.chars[random.nextInt(this.chars.length)];
-			sb.append(c);
-		}
+    @Override
+    public String generateSourceName() {
+        StringBuilder sb = new StringBuilder(this.sourceLength);
+        Random random = new Random();
+        for (int i = 0; i < this.sourceLength; i++) {
+            char c = this.chars[random.nextInt(this.chars.length)];
+            sb.append(c);
+        }
 
-		return sb.toString();
-	}
+        return sb.toString();
+    }
 
-	@Override
-	public String generateAttributeToken() {
-		StringBuilder sb = new StringBuilder(this.valueLength);
-		Random random = new Random();
-		for (int i = 0; i < this.valueLength; i++) {
-			char c = this.chars[random.nextInt(this.chars.length)];
-			sb.append(c);
-		}
+    @Override
+    public String generateAttributeName() {
+        StringBuilder sb = new StringBuilder(this.attributeLength);
+        Random random = new Random();
+        for (int i = 0; i < this.attributeLength; i++) {
+            char c = this.chars[random.nextInt(this.chars.length)];
+            sb.append(c);
+        }
 
-		return sb.toString();
-	}
+        return sb.toString();
+    }
 
-	public int getSourceLength() {
-		return sourceLength;
-	}
+    @Override
+    public String generateAttributeToken() {
+        StringBuilder sb = new StringBuilder(this.valueLength);
+        Random random = new Random();
+        for (int i = 0; i < this.valueLength; i++) {
+            char c = this.chars[random.nextInt(this.chars.length)];
+            sb.append(c);
+        }
 
-	public void setSourceLength(int sourceLength) {
-		this.sourceLength = sourceLength;
-	}
+        return sb.toString();
+    }
 
-	public int getAttributeLength() {
-		return attributeLength;
-	}
+    public int getSourceLength() {
+        return sourceLength;
+    }
 
-	public void setAttributeLength(int attributeLength) {
-		this.attributeLength = attributeLength;
-	}
+    public void setSourceLength(int sourceLength) {
+        this.sourceLength = sourceLength;
+    }
 
-	public int getValueLength() {
-		return valueLength;
-	}
+    public int getAttributeLength() {
+        return attributeLength;
+    }
 
-	public void setValueLength(int valueLength) {
-		this.valueLength = valueLength;
-	}
+    public void setAttributeLength(int attributeLength) {
+        this.attributeLength = attributeLength;
+    }
 
-	public String getAllowedChars() {
-		return allowedChars;
-	}
+    public int getValueLength() {
+        return valueLength;
+    }
 
-	public void setAllowedChars(String allowedChars) {
-		this.allowedChars = allowedChars;
-		this.chars = allowedChars.toCharArray();
-	}
+    public void setValueLength(int valueLength) {
+        this.valueLength = valueLength;
+    }
+
+    public String getAllowedChars() {
+        return allowedChars;
+    }
+
+    public void setAllowedChars(String allowedChars) {
+        this.allowedChars = allowedChars;
+        this.chars = allowedChars.toCharArray();
+    }
 
 }
