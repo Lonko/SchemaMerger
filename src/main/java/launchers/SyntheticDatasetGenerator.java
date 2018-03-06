@@ -33,7 +33,8 @@ public class SyntheticDatasetGenerator {
 	private CurveFunction prodLinkage;
 	private Map<String, String> attrFixedTokens;
 	private Map<String, List<String>> attrValues;
-	private List<String> sources;
+	private List<String> sourcesBySize;
+	private List<String> sourcesByLinkage;
 	private Map<String, Integer> attrLinkage;
 
 	public SyntheticDatasetGenerator(){
@@ -93,8 +94,9 @@ public class SyntheticDatasetGenerator {
 	public void generateSources(){
 		SourcesGenerator sg = new SourcesGenerator(this.mdbc, this.conf, this.sg, this.sizes, 
 													this.prodLinkage, this.attrFixedTokens, this.attrValues);
-		this.sources = sg.prepareSources();
-		this.attrLinkage = sg.createSources(this.sources);
+		this.sourcesBySize = sg.prepareSources();
+		this.attrLinkage = sg.createSources(this.sourcesBySize);
+		this.sourcesByLinkage = sg.getLinkageOrder(this.sourcesBySize);
 	}
 	
 	public int getCatalogueSize(){
@@ -104,13 +106,22 @@ public class SyntheticDatasetGenerator {
 	public int getDatasetSize(){
 		return this.prodLinkage.getSampling();
 	}
+	
+	public int getSourceSize(String name){
+	    int i = this.sourcesBySize.indexOf(name);
+	    return this.sizes.getYValues()[i];
+	}
 
-	public List<String> getSources() {
-		return sources;
+	public List<String> getSourcesBySize() {
+		return this.sourcesBySize;
+	}
+	
+	public List<String> getSourcesByLinkage(){
+	    return this.sourcesByLinkage;
 	}
 
 	public Map<String, Integer> getAttrLinkage() {
-		return attrLinkage;
+		return this.attrLinkage;
 	}
 	
 	public static void main(String[] args){
