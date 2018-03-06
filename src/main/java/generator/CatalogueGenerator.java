@@ -126,7 +126,7 @@ public class CatalogueGenerator {
 			int nToken = Integer.valueOf(cardClass);
 			Set<String> tokenPool = new HashSet<>();
 			//nToken*15 to generate a pool bigger than necessary
-			for(int i = 0; i < nToken*15; i++){
+			for(int i = 0; i < nToken*nToken; i++){
 				tokenPool.add(this.stringGenerator.generateAttributeToken());
 			}
 			this.fixedTokenPool.put(Integer.valueOf(cardClass), new ArrayList<String>(tokenPool));
