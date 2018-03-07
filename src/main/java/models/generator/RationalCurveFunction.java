@@ -83,8 +83,8 @@ public class RationalCurveFunction implements CurveFunction {
         do {
             this.yValues = new int[this.x0];
             calculateYValues();
-            int integral = getSampling();
-            int difference = integral - prodsPages;
+            int sampling = getSampling();
+            int difference = sampling - prodsPages;
             if (Math.abs(difference) < ACCEPTABLE_ERROR * prodsPages) {
                 foundX0 = true;
                 compensateError(difference);
@@ -112,21 +112,21 @@ public class RationalCurveFunction implements CurveFunction {
     }
 
     public int getSampling() {
-        int integral = 0;
+        int sampling = 0;
         for (int i = 0; i < this.x0; i++)
-            integral += this.yValues[i];
+            sampling += this.yValues[i];
 
-        return integral;
+        return sampling;
     }
 
     // finds x value that separates the head from the tail
     public int getHeadThreshold() {
-        int integral = getSampling();
+        int sampling = getSampling();
         int head = 0;
         int x = this.x0;
         for (int i = 1; i <= this.x0; i++) {
             head += this.yValues[i - 1];
-            if (head >= (integral / 2)) {
+            if (head >= (sampling / 2)) {
                 x = i;
                 break;
             }
