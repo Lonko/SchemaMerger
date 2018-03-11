@@ -206,8 +206,6 @@ public class FileDataConnector {
         PrintWriter writer = null;
         JSONObject json = new JSONObject();
         int clusterID = 0;
-        String header = "Attribute,MatchLinkage,TotalLinkage";
-        List<String> csvRows = new ArrayList<>();
 
         try {
             writer = new PrintWriter(new File(this.tsPath + "/" + name + ".json"));
@@ -217,23 +215,10 @@ public class FileDataConnector {
                 jsonCluster.addAll(cluster);
                 json.put(clusterID, jsonCluster);
                 clusterID++;
-                // add rows for the linkage CSV
-                for (String attr : cluster) {
-                    if (schema.getMatchLinkage().containsKey(attr)
-                            || schema.getTotalLinkage().containsKey(attr)) {
-                        // linkage on source
-                        int matchLinkage = schema.getMatchLinkage().getOrDefault(attr, 0);
-                        // linkage on category
-                        int totLinkage = schema.getTotalLinkage().get(attr);
-                        String row = attr.replaceAll(",", "#;#") + "," + matchLinkage + "," + totLinkage;
-                        csvRows.add(row);
-                    }
-                }
             }
 
             String jsonToPrint = JsonWriter.formatJson(json.toJSONString());
             writer.print(jsonToPrint);
-            printCSV(name + "_linkage", csvRows, header);
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
