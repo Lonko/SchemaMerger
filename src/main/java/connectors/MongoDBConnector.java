@@ -276,6 +276,19 @@ public class MongoDBConnector {
 
         return rlList;
     }
+    
+    /*fetches the schema of a single source*/
+    public List<String> getSingleSchema(String category, String website){
+        Bson wFilter = Filters.eq("website", website);
+        Bson cFilter = Filters.eq("category", category);
+        Bson andFilter = Filters.and(wFilter, cFilter);
+
+        @SuppressWarnings("unchecked")
+        List<String> fetchedSchema = this.database.getCollection("Schemas").find(andFilter).first()
+                                                  .get("attributes", List.class);
+        
+        return fetchedSchema;
+    }
 
     /*
      * fetches the schemas of all sources that belong to one of the categories
