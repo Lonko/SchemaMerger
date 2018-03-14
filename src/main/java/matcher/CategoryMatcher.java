@@ -42,7 +42,7 @@ public class CategoryMatcher {
     }
 
     public boolean getMatch(List<String> websites, String category, int cardinality, Schema schemaMatch,
-            boolean useMI) {
+            boolean useMI, boolean matchToOne) {
         boolean matched = false;
         // last website is the one to be matched with the catalog
         String newSource = websites.remove(websites.size() - 1);
@@ -91,44 +91,50 @@ public class CategoryMatcher {
         return foundSourcePage;
     }
 
-    // update all products pages' attribute names and merges catalog prods in
-    // linkageS
+    // update all products pages' attribute names and merges catalog prods in linkageS
     private List<Document[]> setupCatalog(Map<Document, List<Document>> prods, Schema schema) {
+       return setupCatalog(prods, schema, "");
+    }
+    
+    private List<Document[]> setupCatalog(Map<Document, List<Document>> prods, Schema schema, String reference) {
         List<Document[]> updatedList = new ArrayList<>();
 
         for (Map.Entry<Document, List<Document>> linkage : prods.entrySet()) {
             Document sourcePage = linkage.getKey();
-            Document catalogPage = mergeProducts(linkage.getValue(), schema);
-            updateSpecs(sourcePage, schema, true);
+            Document catalogPage = mergeProducts(linkage.getValue(), schema, reference);
+            updateSpecs(sourcePage, schema);
             updatedList.add(new Document[] { catalogPage, sourcePage });
         }
 
         return updatedList;
     }
 
-    private Document mergeProducts(List<Document> prods, Schema schema) {
+    private Document mergeProducts(List<Document> prods, Schema schema, String reference) {
         // update the attribute names according to the existing schema
-        prods.forEach(p -> updateSpecs(p, schema, false));
+        prods.forEach(p -> updateSpecs(p, schema));
         Map<String, Object> newSpecs = new HashMap<>();
 
         for (Document p : prods)
             for (String attr : p.get("spec", Document.class).keySet()) {
-                String oldValue = (String) newSpecs.getOrDefault(attr, "");
-                String newValue = p.get("spec", Document.class).getString(attr);
-                if (oldValue.length() > 0) // there was already a value for that
-                                           // attr
-                    newSpecs.put(attr, oldValue + "###" + newValue);
-                else
-                    newSpecs.put(attr, newValue);
+                /* if reference is an empty string add all attributes
+                 * if it contains a source name, only add the attributes that can be found in it
+                 */
+                if(reference.equals("") || attr.contains(reference)){
+                    String oldValue = (String) newSpecs.getOrDefault(attr, "");
+                    String newValue = p.get("spec", Document.class).getString(attr);
+                    if (oldValue.length() > 0) // there was already a value for that attr
+                        newSpecs.put(attr, oldValue + "###" + newValue);
+                    else
+                        newSpecs.put(attr, newValue);
+                }
             }
-
+        
         Document specs = new Document(newSpecs);
-
         return new Document("spec", specs);
     }
 
     // update attribute names of a single product page
-    private void updateSpecs(Document p, Schema schema, boolean notInCatalog) {
+    private void updateSpecs(Document p, Schema schema) {
         Document specs = p.get("spec", Document.class);
         String website = p.getString("website");
         Document newSpecs = new Document();
@@ -137,16 +143,16 @@ public class CategoryMatcher {
                 .forEach(
                         attr -> {
                             if (!attr.contains("###")) {
-                                if (notInCatalog) {
-                                    int counter = schema.getTotalLinkage().getOrDefault(
-                                            attr + "###" + website, 0) + 1;
-                                    schema.getTotalLinkage().put(attr + "###" + website, counter);
-                                }
                                 String value = specs.getString(attr);
                                 newSpecs.append(
                                         schema.getAttributesMap().getOrDefault(attr + "###" + website,
                                                 attr + "###" + website), value);
-                            }
+                            } else 
+                                /* In case of wrong linkage a page could appear twice in the original linkageMap;
+                                 * when this happens, its specs get updated twice, but the second time they need 
+                                 * to be added without changes.
+                                 */
+                                newSpecs.append(attr, specs.getString(attr));
                         });
         p.put("spec", newSpecs);
     }
@@ -193,8 +199,6 @@ public class CategoryMatcher {
         invIndexes.setCatalogIndex(invIndCatalog);
         invIndexes.setLinkedIndex(invIndLinked);
         invIndexes.setSourceIndex(invIndSource);
-        System.out.println("Attributes Source :" + invIndSource.size());
-        System.out.println("Page in linkage with the new source: " + linkedCounter);
 
         return invIndexes;
     }

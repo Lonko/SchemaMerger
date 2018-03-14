@@ -32,7 +32,7 @@ public class Cohordinator {
 
     // cardinality parameter is currently useless
     public Schema matchAllSourcesInCategory(List<String> orderedWebsites, String category,
-            CategoryMatcher cm, int cardinality, boolean useMI, SyntheticDatasetGenerator sdg) {
+            CategoryMatcher cm, int cardinality, boolean useMI, boolean matchToOne, SyntheticDatasetGenerator sdg) {
 
         Schema schema = new Schema();
         List<String> currentMatchSources = new ArrayList<>();
@@ -41,9 +41,7 @@ public class Cohordinator {
         for (int i = 1; i < orderedWebsites.size(); i++) {
             System.out.println("-->" + orderedWebsites.get(i) + "<-- (" + i + ")");
             currentMatchSources.add(orderedWebsites.get(i));
-            if (!cm.getMatch(currentMatchSources, category, cardinality, schema, useMI)) {
-                System.out.println("NO MATCH");
-            }
+            cm.getMatch(currentMatchSources, category, cardinality, schema, useMI, matchToOne);
         }
 
         return schema;
@@ -91,14 +89,13 @@ public class Cohordinator {
 
         for (String category : categories) {
             System.out.println(category.toUpperCase());
-            trainingSets.put(category, tsg.getTrainingSetWithTuples(500, 15000, false, true, 0.25, category));
+            trainingSets.put(category, tsg.getTrainingSetWithTuples(300, 10000, false, true, 0.25, category));
         }
 
         return trainingSets;
     }
 
-    public void evaluateSyntheticResults(List<List<String>> clusters,
-            Map<String, Integer> expectedClusterSizes) {
+    public void evaluateSyntheticResults(List<List<String>> clusters, Map<String, Integer> expectedClusterSizes) {
         DynamicCombinationsCalculator dcc = new DynamicCombinationsCalculator();
         int truePositives = 0, falsePositives = 0, expectedPositives = 0;
         double p, r, f;
@@ -150,8 +147,9 @@ public class Cohordinator {
         // Synthetic dataset generation
         System.out.println("INIZIO GENERAZIONE DATASET");
         SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator(fdc, mdbc, config);
-        sdg.generateCatalogue(false);
-        sdg.generateSources(false);
+        boolean reset = true;
+        sdg.generateCatalogue(reset);
+        sdg.generateSources(reset);
         System.out.println("FINE GENERAZIONE DATASET");
 
         // Training / model loading
@@ -176,14 +174,36 @@ public class Cohordinator {
             // Classification
             System.out.println("INIZIO GENERAZIONE SCHEMA");
             CategoryMatcher cm = new CategoryMatcher(mdbc, r);
-            Schema schema = c.matchAllSourcesInCategory(sdg.getSourcesByLinkage(), categories.get(0), cm, 0,
-                    true, sdg);
+            boolean withReference = true;
+            List<String> sources = sdg.getSourcesByLinkage();
+            Schema schema = c.matchAllSourcesInCategory(sources, categories.get(0), cm, 0, true, withReference,
+                                                        sdg);
             fdc.printMatchSchema("clusters", schema);
             System.out.println("FINE GENERAZIONE SCHEMA");
 
             // Result Evaluation
             System.out.println("INIZIO VALUTAZIONE RISULTATI");
-            c.evaluateSyntheticResults(schema.schema2Clusters(), sdg.getAttrLinkage());
+            List<List<String>> clusters = schema.schema2Clusters();
+            Map<String, Integer> sizes = sdg.getAttrLinkage();
+            if(withReference){
+                clusters = clusters.stream()
+                                   .filter(cluster -> {
+                                       boolean hasValidAttribute = false;
+                                       for(String a : cluster){
+                                           String source = a.split("###")[1];
+                                           if(source.equals(sources.get(0))){
+                                               hasValidAttribute = true;
+                                               break;
+                                           }
+                                       }
+                                       return hasValidAttribute;
+                                   })
+                                   .collect(Collectors.toList());
+                String category = config.getCategories().get(0);
+                List<String> validAttributes = mdbc.getSingleSchema(category, sources.get(0));
+                sizes.keySet().retainAll(validAttributes);
+            }
+            c.evaluateSyntheticResults(clusters, sizes);
             System.out.println("FINE VALUTAZIONE RISULTATI");
         } finally {
             r.stop();
