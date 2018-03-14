@@ -384,7 +384,7 @@ public class SourcesGenerator {
             // random error
             for (String token : newValue.split(" ")) {
                 double chance = rand.nextDouble();
-                if (chance <= this.randomError)
+                if (chance <= this.randomError / newValue.split(" ").length)
                     tokens.add(this.stringGenerator.generateAttributeToken());
                 else
                     tokens.add(token);
@@ -546,6 +546,7 @@ public class SourcesGenerator {
         }
 
         this.mdbc.addSyntheticProductsIndexes();
+        this.mdbc.dropCollection("Schemas");
         this.mdbc.initializeCollection("Schemas");
 
         return this.linkage;
