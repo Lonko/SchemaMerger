@@ -16,6 +16,7 @@ import matcher.DynamicCombinationsCalculator;
 import matcher.FeatureExtractor;
 import matcher.TrainingSetGenerator;
 import models.generator.Configurations;
+import models.generator.LaunchConfiguration;
 import models.matcher.Schema;
 import connectors.FileDataConnector;
 import connectors.MongoDBConnector;

@@ -36,15 +36,14 @@ public class FileDataConnector {
     private String datasetPath;
     private String rlPath;
     private String tsPath;
-
-    public FileDataConnector() {
-        this(DEFAULT_DATASET, DEFAULT_RL, DEFAULT_TS_FOLDER, DEFAULT_CONFIG);
-    }
-
-    // when using the synthetic dataset
+ 
+    /**
+     * Specify config file
+     * @param config
+     */
     public FileDataConnector(String config) {
-        this.configPath = config;
-    }
+        this(DEFAULT_DATASET, DEFAULT_RL, DEFAULT_TS_FOLDER, config);
+    }    
 
     public FileDataConnector(String dataset, String rl, String ts, String config) {
         this.configPath = config;
