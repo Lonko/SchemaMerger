@@ -17,6 +17,7 @@ import connectors.FileDataConnector;
 import connectors.MongoDBConnector;
 import models.generator.Configurations;
 import models.generator.CurveFunction;
+import models.generator.LaunchConfiguration;
 
 public class SyntheticDatasetGenerator {
 
@@ -36,8 +37,8 @@ public class SyntheticDatasetGenerator {
     private List<String> sourcesByLinkage;
     private Map<String, Integer> attrLinkage;
 
-    public SyntheticDatasetGenerator() {
-        this.fdc = new FileDataConnector();
+    public SyntheticDatasetGenerator(LaunchConfiguration lc) {
+        this.fdc = new FileDataConnector(lc.getConfigFile());
         this.conf = new Configurations(fdc.readConfig());
         this.mdbc = new MongoDBConnector(conf.getMongoURI(), conf.getDatabaseName(), this.fdc);
         String path = conf.getStringPathFile();
@@ -125,7 +126,8 @@ public class SyntheticDatasetGenerator {
     }
 
     public static void main(String[] args) {
-        SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator();
+        LaunchConfiguration lc = LaunchConfiguration.getConfigurationFromArgs(args);
+        SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator(lc);
         System.out.println("DELETE EXISTING DATASET? (Y/N)");
         try (Scanner scanner = new Scanner(System.in)){
         	boolean delete = Character.toLowerCase(scanner.next().charAt(0)) == 'y';

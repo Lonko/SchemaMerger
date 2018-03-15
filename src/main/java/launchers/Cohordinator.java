@@ -16,6 +16,7 @@ import matcher.DynamicCombinationsCalculator;
 import matcher.FeatureExtractor;
 import matcher.TrainingSetGenerator;
 import models.generator.Configurations;
+import models.generator.LaunchConfiguration;
 import models.matcher.Schema;
 import connectors.FileDataConnector;
 import connectors.MongoDBConnector;
@@ -131,7 +132,8 @@ public class Cohordinator {
     public static void main(String[] args) {
         // Setup
         System.out.println("INIZIO SETUP");
-        FileDataConnector fdc = new FileDataConnector();
+        LaunchConfiguration lc = LaunchConfiguration.getConfigurationFromArgs(args);
+        FileDataConnector fdc = new FileDataConnector(lc.getConfigFile());
         Configurations config = new Configurations(fdc.readConfig());
         fdc.setDatasetPath(config.getDatasetPath());
         fdc.setRlPath(config.getRecordLinkagePath());
