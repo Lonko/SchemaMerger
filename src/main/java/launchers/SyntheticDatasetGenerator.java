@@ -6,7 +6,6 @@ import generator.RandomStringGenerator;
 import generator.SourcesGenerator;
 import generator.StringGenerator;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -128,28 +127,31 @@ public class SyntheticDatasetGenerator {
     public static void main(String[] args) {
         SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator();
         System.out.println("DELETE EXISTING DATASET? (Y/N)");
-        Scanner scanner = new Scanner(System.in);
-        boolean delete = Character.toLowerCase(scanner.next().charAt(0)) == 'y';
-
-        long start = System.currentTimeMillis();
-        sdg.generateCatalogue(delete);
-        long middle = System.currentTimeMillis();
-        sdg.generateSources(delete);
-        long end = System.currentTimeMillis();
-        long timeForCatalogue = middle - start;
-        long timeForDataset = end - middle;
-        long catalogueTime = timeForCatalogue / 1000;
-        long datasetTime = timeForDataset / 1000;
-        long totalTime = (end - start) / 1000;
-
-        System.out.println("Prodotti nel catalogo: " + sdg.getCatalogueSize());
-        System.out.println("Prodotti nel dataset: " + sdg.getDatasetSize());
-        System.out.println("Tempo di generazione del Catalogo: " + (catalogueTime / 60) + " min "
-                + (catalogueTime % 60) + " sec");
-        System.out.println("Tempo di generazione del Dataset: " + (datasetTime / 60) + " min "
-                + (datasetTime % 60) + " s ");
-        System.out.println("Tempo di esecuzione totale: " + (totalTime / 60) + " min " + (totalTime % 60)
-                + " s ");
-
+        try (Scanner scanner = new Scanner(System.in)){
+        	boolean delete = Character.toLowerCase(scanner.next().charAt(0)) == 'y';
+        	System.out.println("Generate catalogue...");
+	        long start = System.currentTimeMillis();
+	        sdg.generateCatalogue(delete);
+	        long middle = System.currentTimeMillis();
+        	System.out.println("Generate sources...");
+	        sdg.generateSources(delete);
+	        long end = System.currentTimeMillis();
+	        
+	        long timeForCatalogue = middle - start;
+	        long timeForDataset = end - middle;
+	        long catalogueTime = timeForCatalogue / 1000;
+	        long datasetTime = timeForDataset / 1000;
+	        long totalTime = (end - start) / 1000;
+	        
+	
+	        System.out.println("Prodotti nel catalogo: " + sdg.getCatalogueSize());
+	        System.out.println("Prodotti nel dataset: " + sdg.getDatasetSize());
+	        System.out.println("Tempo di generazione del Catalogo: " + (catalogueTime / 60) + " min "
+	                + (catalogueTime % 60) + " sec");
+	        System.out.println("Tempo di generazione del Dataset: " + (datasetTime / 60) + " min "
+	                + (datasetTime % 60) + " s ");
+	        System.out.println("Tempo di esecuzione totale: " + (totalTime / 60) + " min " + (totalTime % 60)
+	                + " s ");
+        } 
     }
 }

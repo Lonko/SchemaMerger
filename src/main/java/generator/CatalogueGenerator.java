@@ -1,7 +1,6 @@
 package generator;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -155,9 +154,15 @@ public class CatalogueGenerator {
             String[] attrTokens = this.tokens.get(attribute).split("-");
             String fixedTokens = "";
 
+            /* 
+             * TODO FP: perché avere un pool di token fissi, invece di generarli per ogni attributo?
+             * I token fissi sono fissi all'interno dell'attributo, non tra attributi o sbaglio? 
+             */
             for (int i = 0; i < Integer.valueOf(attrTokens[1]); i++) {
-                fixedTokens += tokenPool.get(i) + " ";
+            	// If we reach the end of available tokens, we come back from the beginning
+                fixedTokens += tokenPool.get(i % tokenPool.size()) + " ";
             }
+
             this.attrFixedToken.put(attribute, fixedTokens.trim());
 
             List<String> generatedValues = new ArrayList<String>();

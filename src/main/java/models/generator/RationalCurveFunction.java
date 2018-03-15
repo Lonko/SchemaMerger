@@ -85,7 +85,8 @@ public class RationalCurveFunction implements CurveFunction {
             calculateYValues();
             int sampling = getSampling();
             int difference = sampling - prodsPages;
-            if (Math.abs(difference) < ACCEPTABLE_ERROR * prodsPages) {
+            double acceptableDifference = Math.max(ACCEPTABLE_ERROR * prodsPages, 1.0);
+            if (Math.abs(difference) <= acceptableDifference) {
                 foundX0 = true;
                 compensateError(difference);
             } else if (difference > 0) {
