@@ -2,6 +2,7 @@ package launchers;
 
 import java.util.ArrayList;
 import java.util.function.Function;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -242,13 +243,15 @@ public class Cohordinator {
     public static void main(String[] args) {
         Cohordinator c = new Cohordinator();
         System.out.println("UTILIZZARE DATASET SINTETICO? (S/N)");
-        Scanner scanner = new Scanner(System.in);
-        boolean useSynthDataset = Character.toLowerCase(scanner.next().charAt(0)) == 's';
-        scanner.close();
+        boolean useSynthDataset = false;
+        try(Scanner scanner = new Scanner(System.in)){
+        	useSynthDataset = Character.toLowerCase(scanner.next().charAt(0)) == 's';
+        }
 
         // Setup
         System.out.println("INIZIO SETUP");
-        FileDataConnector fdc = new FileDataConnector();
+        LaunchConfiguration lc = LaunchConfiguration.getConfigurationFromArgs(args);
+        FileDataConnector fdc = new FileDataConnector(lc.getConfigFile());
         Configurations config = new Configurations(fdc.readConfig());
         fdc.setDatasetPath(config.getDatasetPath());
         fdc.setRlPath(config.getRecordLinkagePath());

@@ -28,7 +28,6 @@ import com.cedarsoftware.util.io.JsonWriter;
 
 public class FileDataConnector {
 
-    private static final String DEFAULT_CONFIG = "src/main/resources/config.properties";
     private static final String DEFAULT_DATASET = "src/main/resources/specifications";
     private static final String DEFAULT_RL = "src/main/resources/id2category2urls.json";
     private static final String DEFAULT_TS_FOLDER = "src/main/resources/classification";

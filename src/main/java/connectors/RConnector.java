@@ -1,7 +1,8 @@
 package connectors;
 
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import models.matcher.DataFrame;
 
@@ -16,6 +17,7 @@ import org.rosuda.REngine.RList;
 public class RConnector {
 
     private REngine eng = null;
+	private String modelName;
 
     public RConnector() {
     }
@@ -54,7 +56,10 @@ public class RConnector {
     public void loadModel(String modelPath) {
         // load classifier model
         try {
-            this.eng.parseAndEval("load('" + modelPath + "')");
+        	Path modelPathObject = Paths.get(modelPath);
+        	// R creates a variable named after the filename provided. We store it to use it later.
+        	this.modelName = modelPathObject.getFileName().toString().replaceFirst("[.][^.]+$", "");
+            this.eng.parseAndEval("load('" + System.getProperty("user.dir") + '/' + modelPath + "')");
         } catch (REngineException | REXPMismatchException e) {
             e.printStackTrace();
         }
@@ -75,10 +80,10 @@ public class RConnector {
             this.eng.parseAndEval("tc <- trainControl(method=\"repeatedcv\", number=10, repeats=50, classProbs=TRUE,"
                     + " savePredictions=TRUE, summaryFunction=twoClassSummary)");
             // training: logistic regression with Area under ROC as metric
-            this.eng.parseAndEval("modelClassifier <- train(Match~., data=dataSub, trControl=tc, method=\"glm\","
+            this.eng.parseAndEval(modelName+" <- train(Match~., data=dataSub, trControl=tc, method=\"glm\","
                     + " family=binomial(link=\"logit\"), metric=\"ROC\")");
             // save model to file to avoid retraining
-            this.eng.parseAndEval("save(modelClassifier, file = \"" + modelPath + "\")");
+            this.eng.parseAndEval("save("+modelName+", file = \"" + modelPath + "\")");
 
         } catch (REngineException | REXPMismatchException e) {
             e.printStackTrace();
@@ -105,7 +110,7 @@ public class RConnector {
             // pass dataframe to REngine
             this.eng.assign("dataFrame", mydf);
             // predict matches
-            this.eng.parseAndEval("predictions <- predict(modelClassifier, dataFrame, type = 'prob')");
+            this.eng.parseAndEval("predictions <- predict("+modelName+", dataFrame, type = 'prob')");
             // System.out.println(eng.parseAndEval("print(predictions$true)"));
             predictions = this.eng.parseAndEval("predictions$true").asDoubles();
 
