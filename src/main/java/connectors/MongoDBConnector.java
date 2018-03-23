@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,9 +24,12 @@ import org.bson.conversions.Bson;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
+import com.mongodb.Block;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.WriteConcern;
+import com.mongodb.client.AggregateIterable;
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -37,8 +41,13 @@ import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.WriteModel;
 
+import models.dto.SourceSchema;
+
 public class MongoDBConnector {
-    private MongoClient mc;
+    private static final String DB_COPY = "db_copy";
+	private static final String SCHEMAS = "Schemas";
+	private static final String DB_NAME = "SyntheticDataset";
+	private MongoClient mc;
     private MongoDatabase database;
     private FileDataConnector fdc;
 
@@ -46,7 +55,7 @@ public class MongoDBConnector {
      * CONSTRUCTORS
      */
     public MongoDBConnector(FileDataConnector fdc) {
-        this("mongodb://localhost:27017", "Dataset", fdc);
+        this("mongodb://localhost:27017", DB_NAME, fdc);
     }
 
     public MongoDBConnector(String uri, String db, FileDataConnector fdc) {
@@ -74,33 +83,7 @@ public class MongoDBConnector {
     public long countCollection(String collectionName) {
         return this.database.getCollection(collectionName).count();
     }
-
-    public void initializeAllCollections() {
-        initializeCollection("Products");
-        initializeCollection("RecordLinkage");
-        initializeCollection("Schemas");
-        updateProductsRL();
-    }
-
-    public void initializeCollection(String collectionName) {
-
-        try {
-            MongoCollection<Document> collection = this.database.getCollection(collectionName)
-                    .withWriteConcern(WriteConcern.JOURNALED);
-            if (collection.count() == 0) { // only if it's a new collection
-                Method m = this.getClass().getDeclaredMethod("initialize" + collectionName,
-                        MongoCollection.class);
-                m.invoke(this, collection);
-            }
-        } catch (NoSuchMethodException | SecurityException e) {
-            System.err.println(collectionName + " is not a valid collection name");
-            e.printStackTrace();
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            e.printStackTrace();
-        }
-
-    }
-
+      
     public List<Document> getRLSample(int size, String category) {
         MongoCollection<Document> collection = this.database.getCollection("Products");
         List<Document> sample = new ArrayList<>();
@@ -284,7 +267,7 @@ public class MongoDBConnector {
         Bson andFilter = Filters.and(wFilter, cFilter);
 
         @SuppressWarnings("unchecked")
-        List<String> fetchedSchema = this.database.getCollection("Schemas").find(andFilter).first()
+        List<String> fetchedSchema = this.database.getCollection(SCHEMAS).find(andFilter).first()
                                                   .get("attributes", List.class);
         
         return fetchedSchema;
@@ -298,7 +281,7 @@ public class MongoDBConnector {
         Map<String, List<String>> fetchedSchemas = new TreeMap<>();
 
         this.database
-                .getCollection("Schemas")
+                .getCollection(SCHEMAS)
                 .find(Filters.and(Filters.in("category", categories),
                         Filters.ne("attributes", Collections.EMPTY_LIST))).forEach((Document d) -> {
                     String website = d.getString("website");
@@ -360,20 +343,6 @@ public class MongoDBConnector {
      * END PUBLIC METHODS
      */
 
-    /*
-     * COLLECTION INITIALIZATION METHODS
-     */
-    @SuppressWarnings("unused")
-    private void initializeProducts(MongoCollection<Document> collection) {
-        Map<String, String> websites = this.fdc.getAllWebsites();
-        websites.entrySet().stream().map(this::website2Documents).filter(list -> list.size() > 0)
-                .forEach(collection::insertMany);
-
-        addProductsIndexes(collection);
-
-        initializeCollection("Schemas");
-    }
-
     private void addProductsIndexes(MongoCollection<Document> collection) {
         collection.createIndex(Indexes.ascending("category"));
         collection.createIndex(Indexes.ascending("website"));
@@ -400,28 +369,32 @@ public class MongoDBConnector {
      * should only be called after initializeProducts has already been called
      * once
      */
-    @SuppressWarnings("unused")
-    private void initializeSchemas(MongoCollection<Document> collection) {
+    public void initializeSchemas(Map<String, List<Integer>> string2ids) {
+    	MongoCollection<Document> schemaColl = this.database.getCollection(SCHEMAS);
+    	
         MongoCollection<Document> products = this.database.getCollection("Products");
-        Map<String, Set<String>> schemas = new TreeMap<>();
+        Map<String, SourceSchema> schemas = new TreeMap<>();
 
         products.find().projection(Projections.fields(Projections.include("spec", "website", "category")))
-                .forEach((Document d) -> loadSchema(d, schemas));
+                .forEach((Document d) -> loadSchemaAndProducts(d, schemas, string2ids));
 
-        schemas.entrySet().stream().map(this::schema2Document).forEach(collection::insertOne);
+        schemas.entrySet().stream().map(this::schema2Document).forEach(schemaColl::insertOne);
 
-        collection.createIndex(Indexes.ascending("category"));
-        collection.createIndex(Indexes.ascending("website"));
-        collection.createIndex(Indexes.ascending("website", "category"));
+        schemaColl.createIndex(Indexes.ascending("category"));
+        schemaColl.createIndex(Indexes.ascending("website"));
+        schemaColl.createIndex(Indexes.ascending("website", "category"));
     }
 
-    private void loadSchema(Document d, Map<String, Set<String>> schemas) {
-        String source = d.getString("website") + "___" + d.getString("category");
+    private void loadSchemaAndProducts(Document d, Map<String, SourceSchema> schemas, Map<String, List<Integer>> string2ids) {
+        String website = d.getString("website");
+		String category = d.getString("category");
+		String source = website + "___" + category;
         Document spec = d.get("spec", Document.class);
         Set<String> attributes = spec.keySet();
 
-        Set<String> schema = schemas.getOrDefault(source, new TreeSet<String>());
-        schema.addAll(attributes);
+        SourceSchema schema = schemas.getOrDefault(source, 
+        		new SourceSchema(category, website, new HashSet<>(), string2ids.get(website)));
+        schema.getAttributes().addAll(attributes);
         schemas.put(source, schema);
     }
 
@@ -460,13 +433,10 @@ public class MongoDBConnector {
         products.bulkWrite(updates, new BulkWriteOptions().ordered(false));
     }
 
-    private Document schema2Document(Map.Entry<String, Set<String>> sourceSchema) {
-        String[] key = sourceSchema.getKey().split("___");
-        String website = key[0];
-        String category = key[1];
-
-        return new Document("category", category).append("website", website).append("attributes",
-                sourceSchema.getValue());
+    private Document schema2Document(Map.Entry<String, SourceSchema> source) {
+        SourceSchema sourceSchema = source.getValue();
+		return new Document("category", sourceSchema.getCategory()).append("website", sourceSchema.getWebsite())
+				.append("attributes", sourceSchema.getAttributes()).append("linkages", sourceSchema.getIds());
     }
 
     private List<Document> website2Documents(Map.Entry<String, String> website) {
@@ -554,5 +524,70 @@ public class MongoDBConnector {
         // String u2 = dPair[1].getString("url");
         // System.out.println(u1+"  <------>  "+u2);
         // });
+    }
+
+	public void copySchema() {
+		MongoCollection<Document> collection = this.database.getCollection(SCHEMAS);
+		MongoCollection<Document> copyColl = this.database.getCollection(DB_COPY);
+		copyColl.deleteMany(new Document());
+		FindIterable<Document> allDatas = collection.find().projection(Projections.fields(
+				Projections.include("website", "category", "linkages"), Projections.excludeId()));
+		
+		allDatas.forEach((Block<Document>) copyColl::insertOne);
+	}
+
+	public Document getTopSource() {
+		MongoCollection<Document> copyColl = this.database.getCollection(DB_COPY);
+    	AggregateIterable<Document> result = copyColl.aggregate(Arrays.asList(new Document("$project",
+    				new Document("_id", 1).append("website", 1).append("linkages", 1).append("nb_linkages",
+    						new Document("$size","$linkages"))) //72ulB3N PRetsuG
+    			, new Document("$sort", new Document("nb_linkages", -1))));
+    	Document next = result.iterator().next();
+    	return next;
+	}
+
+	public long removeSourceTempSendSize(Document d) {
+		MongoCollection<Document> copyColl = this.database.getCollection(DB_COPY);
+		copyColl.findOneAndDelete(new Document("_id", d.get("_id")));
+		return copyColl.count();
+	}
+	
+	public long getTempSize() {
+		MongoCollection<Document> copyColl = this.database.getCollection(DB_COPY);
+		return copyColl.count();
+	}
+	
+	   /**
+     * Finds top linkage file
+     * 
+     * db.Schemas.aggregate(    
+	[      
+		{ $project: 
+			{ _id: 0, website: 1, attributes: 1, 
+				nb_linkages: { 
+					$size: { 
+						$setIntersection: [ "$attributes", ["72ulB3N","lOTxnc3" ] ]
+					}
+				}
+			} 
+		}, 
+		{ $sort:{nb_attributes:-1}  
+		}
+	] 
+)
+
+     * @param productIds
+     * @return
+     */
+    public Document getTopLinkage(List<String> productIds) {
+    	MongoCollection<Document> collection = this.database.getCollection(DB_COPY);
+    	AggregateIterable<Document> result = collection.aggregate(Arrays.asList(new Document("$project",
+    				new Document("_id", 1).append("website", 1).append("linkages", 1).append("nb_linkages",
+    						new Document("$size",
+    								new Document("$setIntersection", Arrays.asList(
+    										"$linkages", productIds)))) //72ulB3N PRetsuG
+    			), new Document("$sort", new Document("nb_linkages", -1))));
+    	Document next = result.iterator().next();
+    	return next;
     }
 }

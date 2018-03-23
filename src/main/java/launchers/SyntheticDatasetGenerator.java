@@ -13,6 +13,8 @@ import java.util.Scanner;
 
 import org.bson.Document;
 
+import com.sun.istack.internal.logging.Logger;
+
 import connectors.FileDataConnector;
 import connectors.MongoDBConnector;
 import models.generator.Configurations;
@@ -34,24 +36,14 @@ public class SyntheticDatasetGenerator {
     private Map<String, String> attrFixedTokens;
     private Map<String, List<String>> attrValues;
     private List<String> sourcesBySize;
-    private List<String> sourcesByLinkage;
     private Map<String, Integer> attrLinkage;
+    
+    private static final Logger log = Logger.getLogger(SyntheticDatasetGenerator.class);
 
     public SyntheticDatasetGenerator(LaunchConfiguration lc) {
         this.fdc = new FileDataConnector(lc.getConfigFile());
         this.conf = new Configurations(fdc.readConfig());
         this.mdbc = new MongoDBConnector(conf.getMongoURI(), conf.getDatabaseName(), this.fdc);
-        String path = conf.getStringPathFile();
-        if (path.equals(""))
-            this.sg = new RandomStringGenerator(SOURCE_NAME_LENGTH, ATTRIBUTE_NAME_LENGTH, TOKEN_LENGTH);
-        else
-            this.sg = new DictionaryStringGenerator(path);
-    }
-
-    public SyntheticDatasetGenerator(FileDataConnector fdc, MongoDBConnector mdbc, Configurations conf) {
-        this.fdc = fdc;
-        this.conf = conf;
-        this.mdbc = mdbc;
         String path = conf.getStringPathFile();
         if (path.equals(""))
             this.sg = new RandomStringGenerator(SOURCE_NAME_LENGTH, ATTRIBUTE_NAME_LENGTH, TOKEN_LENGTH);
@@ -81,7 +73,7 @@ public class SyntheticDatasetGenerator {
     }
 
     // generate and upload catalogue
-    public void generateCatalogue(boolean delete) {
+    private void generateCatalogue(boolean delete) {
         CatalogueGenerator cg = new CatalogueGenerator(this.conf, this.sg);
         List<Document> catalogue = cg.createCatalogue();
         uploadCatalogue(catalogue, delete);
@@ -92,68 +84,63 @@ public class SyntheticDatasetGenerator {
     }
 
     // generate and upload sources
-    public void generateSources(boolean delete) {
+    private void generateSources(boolean delete) {
         SourcesGenerator sg = new SourcesGenerator(this.mdbc, this.conf, this.sg, this.sizes,
                 this.prodLinkage, this.attrFixedTokens, this.attrValues);
         this.sourcesBySize = sg.prepareSources();
         this.attrLinkage = sg.createSources(this.sourcesBySize, delete);
-        this.sourcesByLinkage = sg.getLinkageOrder(this.sourcesBySize);
     }
 
-    public int getCatalogueSize() {
+    private int getCatalogueSize() {
         return this.prodLinkage.getYValues().length;
     }
 
-    public int getDatasetSize() {
+    private int getDatasetSize() {
         return this.prodLinkage.getSampling();
-    }
-
-    public int getSourceSize(String name) {
-        int i = this.sourcesBySize.indexOf(name);
-        return this.sizes.getYValues()[i];
-    }
-
-    public List<String> getSourcesBySize() {
-        return this.sourcesBySize;
-    }
-
-    public List<String> getSourcesByLinkage() {
-        return this.sourcesByLinkage;
     }
 
     public Map<String, Integer> getAttrLinkage() {
         return this.attrLinkage;
     }
+    
+    /**
+     * Launch full generation of catalog, log time and some details
+     * @param delete
+     */
+    public void launchGeneration(boolean delete) {
+    	log.info("Generate catalogue...");
+        long start = System.currentTimeMillis();
+        generateCatalogue(delete);
+        long middle = System.currentTimeMillis();
+        log.info("Generate sources...");
+        generateSources(delete);
+        long end = System.currentTimeMillis();
+        
+        long timeForCatalogue = middle - start;
+        long timeForDataset = end - middle;
+        long catalogueTime = timeForCatalogue / 1000;
+        long datasetTime = timeForDataset / 1000;
+        long totalTime = (end - start) / 1000;
+        
+
+        log.info("Prodotti nel catalogo: " + getCatalogueSize());
+        log.info("Prodotti nel dataset: " + getDatasetSize());
+        log.info("Tempo di generazione del Catalogo: " + (catalogueTime / 60) + " min "
+                + (catalogueTime % 60) + " sec");
+        log.info("Tempo di generazione del Dataset: " + (datasetTime / 60) + " min "
+                + (datasetTime % 60) + " s ");
+        log.info("Tempo di esecuzione totale: " + (totalTime / 60) + " min " + (totalTime % 60)
+                + " s ");
+    }
 
     public static void main(String[] args) {
         LaunchConfiguration lc = LaunchConfiguration.getConfigurationFromArgs(args);
-        SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator(lc);
         System.out.println("DELETE EXISTING DATASET? (Y/N)");
+        boolean delete = false;
         try (Scanner scanner = new Scanner(System.in)){
-        	boolean delete = Character.toLowerCase(scanner.next().charAt(0)) == 'y';
-        	System.out.println("Generate catalogue...");
-	        long start = System.currentTimeMillis();
-	        sdg.generateCatalogue(delete);
-	        long middle = System.currentTimeMillis();
-        	System.out.println("Generate sources...");
-	        sdg.generateSources(delete);
-	        long end = System.currentTimeMillis();
-	        
-	        long timeForCatalogue = middle - start;
-	        long timeForDataset = end - middle;
-	        long catalogueTime = timeForCatalogue / 1000;
-	        long datasetTime = timeForDataset / 1000;
-	        long totalTime = (end - start) / 1000;
-	        
-	
-	        System.out.println("Prodotti nel catalogo: " + sdg.getCatalogueSize());
-	        System.out.println("Prodotti nel dataset: " + sdg.getDatasetSize());
-	        System.out.println("Tempo di generazione del Catalogo: " + (catalogueTime / 60) + " min "
-	                + (catalogueTime % 60) + " sec");
-	        System.out.println("Tempo di generazione del Dataset: " + (datasetTime / 60) + " min "
-	                + (datasetTime % 60) + " s ");
-	        System.out.println("Tempo di esecuzione totale: " + (totalTime / 60) + " min " + (totalTime % 60)
-	                + " s ");
-        } 
+        	delete = Character.toLowerCase(scanner.next().charAt(0)) == 'y';
+        }
+        SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator(lc);
+        sdg.launchGeneration(delete);
     }
 }

@@ -1,6 +1,5 @@
 package generator;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -547,7 +546,7 @@ public class SourcesGenerator {
 
         this.mdbc.addSyntheticProductsIndexes();
         this.mdbc.dropCollection("Schemas");
-        this.mdbc.initializeCollection("Schemas");
+        this.mdbc.initializeSchemas(this.source2Ids);
 
         return this.linkage;
     }
