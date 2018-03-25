@@ -6,7 +6,6 @@ import generator.RandomStringGenerator;
 import generator.SourcesGenerator;
 import generator.StringGenerator;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -127,10 +126,11 @@ public class SyntheticDatasetGenerator {
 
     public static void main(String[] args) {
         SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator();
-        System.out.println("DELETE EXISTING DATASET? (Y/N)");
+        System.out.println("ELIMINARE DATASET ESISTENTE? (S/N)");
         Scanner scanner = new Scanner(System.in);
-        boolean delete = Character.toLowerCase(scanner.next().charAt(0)) == 'y';
-
+        boolean delete = Character.toLowerCase(scanner.next().charAt(0)) == 's';
+        scanner.close();
+        
         long start = System.currentTimeMillis();
         sdg.generateCatalogue(delete);
         long middle = System.currentTimeMillis();
