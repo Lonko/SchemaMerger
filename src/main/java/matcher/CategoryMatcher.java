@@ -1,6 +1,5 @@
 package matcher;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -161,7 +160,6 @@ public class CategoryMatcher {
         Map<String, Set<Integer>> invIndCatalog = new HashMap<>();
         Map<String, Set<Integer>> invIndLinked = new HashMap<>();
         Map<String, Set<Integer>> invIndSource = new HashMap<>();
-        int linkedCounter = 0;
 
         // check all linked product pages
         for (int i = 0; i < prods.size(); i++) {
@@ -187,7 +185,6 @@ public class CategoryMatcher {
                 // ...and the source index if the page belongs to the source to
                 // be matched
                 if (isInSource) {
-                    linkedCounter++;
                     Set<Integer> indexesS = invIndSource.getOrDefault(attrL, new HashSet<Integer>());
                     indexesS.add(i);
                     invIndSource.put(attrL, indexesS);
