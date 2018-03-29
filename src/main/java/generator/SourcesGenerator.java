@@ -1,6 +1,5 @@
 package generator;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -402,37 +401,26 @@ public class SourcesGenerator {
         Random rnd = new Random();
 
         for (Document prod : products) {
-            int id = prod.getInteger("id");
-            List<String> attrs = pAttrs.get(id);
+            int realIds = prod.getInteger("id");
+            List<String> attrs = pAttrs.get(realIds);
             Document page = new Document();
             Document newSpecs = generateSpecs(prod.get("spec", Document.class), newValues, attrs);
-            // linkage
+            // linkage and IDs
             List<String> linkage = new ArrayList<>();
-            for (String rlSource : this.id2Sources.get(id))
-                if (!rlSource.equals(source)) {
-                    /*
-                     * error < this.missingLinkage => no linkage
-                     * this.missingLinkage <= error < this.linkageError => wrong
-                     * linkage this.missingLinkage + this.linkageError <= error
-                     * => correct linkage
-                     */
-                    double error = rnd.nextDouble();
-                    // no error
-                    if (error > this.missingLinkage + this.linkageError)
-                        linkage.add(rlSource + "/" + id + "/");
-                    // add wrong linkage url
-                    else if (error > this.missingLinkage) {
-                        int wrongProdId = rnd.nextInt(this.id2Sources.size());
-                        int wrongSourceId = rnd.nextInt(this.id2Sources.get(wrongProdId).size());
-                        linkage.add(this.id2Sources.get(wrongProdId).get(wrongSourceId) + "/" + wrongProdId
-                                + "/");
-                    }
+            List<Integer> ids = buildProductIds(rnd, realIds);
+            for (Integer id : ids) {
+            	for (String rlSource : this.id2Sources.get(id)) {
+            		if (!rlSource.equals(source)) {
+                        linkage.add(rlSource + "/" + realIds + "/");
+            		}
                 }
+            }
 
             page.append("category", this.categories.get(0));
-            page.append("url", source + "/" + id + "/");
+            page.append("url", source + "/" + realIds + "/");
             page.append("spec", newSpecs);
             page.append("linkage", linkage);
+            page.append("ids", ids);
             page.append("website", source);
 
             prodPages.add(page);
@@ -440,6 +428,33 @@ public class SourcesGenerator {
 
         return prodPages;
     }
+
+    /**
+     * Find IDs of product in dataset, provided its REAL id and estimating linkage errors
+     * @param rnd
+     * @param id
+     * @param linkage
+     */
+	private List<Integer> buildProductIds(Random rnd, int realId) {
+		List<Integer> ids = new ArrayList<>();
+		/*
+		 * error < this.missingLinkage => no linkage
+		 * this.missingLinkage <= error < this.linkageError => wrong
+		 * linkage this.missingLinkage + this.linkageError <= error
+		 * => correct linkage
+		 */
+		double error = rnd.nextDouble();
+		
+		if (error > this.missingLinkage + this.linkageError) {
+			// no error
+			ids.add(realId);
+		} else if (error > this.missingLinkage) {
+			// add wrong linkage url
+		    int wrongProdId = rnd.nextInt(this.id2Sources.size());
+		    ids.add(wrongProdId);
+		}
+		return ids;
+	}
 
     // generates all sources
     private List<Document> createSource(String sourceName, int size, List<Document> products) {

@@ -434,6 +434,7 @@ public class MongoDBConnector {
         int batchSize = 1000;
         List<WriteModel<Document>> updates = new ArrayList<WriteModel<Document>>();
 
+        //TODO add product IDs
         MongoCursor<Document> cursor = rl.find().iterator();
         try {
             while (cursor.hasNext()) {
