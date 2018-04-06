@@ -17,6 +17,12 @@ import org.bson.Document;
 
 import connectors.MongoDBConnector;
 
+/**
+ * Generator of training sets, ie sets of pairs of attributes, with features computed AND match/mismatch
+ * @author marco
+ * @see Features
+ *
+ */
 public class TrainingSetGenerator {
 
     private MongoDBConnector mdbc;
@@ -69,6 +75,8 @@ public class TrainingSetGenerator {
 
         List<Features> trainingSet = getTrainingSet(examples.get("positives"), examples.get("negatives"),
                 useWebsite);
+        
+        //Training set is computed. Now, adapt it to the format required.
         List<String> tsRows = new ArrayList<>();
 
         for (int i = 0; i < trainingSet.size(); i++) {
@@ -89,6 +97,15 @@ public class TrainingSetGenerator {
         return tsRows;
     }
 
+    /**
+     * From example pages, find all pages in linkage, then generate pairs of attributes for training set.
+     * Tries to respect pos-neg proportion (ratio) : if it is not respected, try again (max 10 tentatives)
+     * 
+     * @param sample
+     * @param nExamples
+     * @param ratio pos-neg proportion
+     * @return
+     */
     private Map<String, List<Tuple>> getExamples(List<Document> sample, int nExamples, double ratio) {
         List<Tuple> posExamples = new ArrayList<>();
         List<Tuple> negExamples = new ArrayList<>();
@@ -240,6 +257,7 @@ public class TrainingSetGenerator {
             features.setSourceMI(this.fe.getMI(sList, a1, a2));
             features.setCategoryMI(this.fe.getMI(cList, a1, a2));
         } catch (Exception e) {
+        	//FIXME !!!!!!!
             // System.out.println("DIMENSIONI S: "+sList.size());
             // for(Document[] d: sList){
             // System.out.println(d[0].getString(a1)+"\t"+ d[1].getString(a2));

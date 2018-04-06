@@ -23,4 +23,19 @@
 * [ ] Dictionary based String generator
 * [x] Sources creation from synthetic catalog  :exclamation:
 * [ ] Error Rate curve for the generated sources
-* [x] Authomatic evaluation of classification on synthetic dataset  :exclamation:
+* [x] Automatic evaluation of classification on synthetic dataset  :exclamation:
+* [ ] Compute on dataset the order of sources
+
+## Getting started + application description
+
+**Premise**: results of Agrawal depends on order with which it computes each sources. If they are provided in order of linkage descendent, its results should be better. The problem is that an efficient way for calculating this order has not been implemented yet. For this reason this order should be provided in some way.
+
+**Two main entry points:**
+* launchers.SyntheticDatasetGenerator#main --> generate Synthetic dataset and add to Mongo
+* launchers.Cohordinator#main --> Launch Agrawal algorithm. 2 possibilities (depends on user input y/n): 
+  * Launch on **real** dataset --> order of sources should be provided as input (currently there is a constant in Cohordinator
+  * Launch on **synthetic** dataset --> launches the S.D. generation, then Agrawal. This cannot be done currently on different steps, as SD object keeps source order in an instance variable. 
+
+**Parameters**: Run parameters should provide a token PROD, TEST or CUSTOM, so that config\_prod.json, config\_test.json or config\_custom.json will be used (custom is in gitignore).
+
+

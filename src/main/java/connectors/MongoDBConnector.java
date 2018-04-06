@@ -75,6 +75,9 @@ public class MongoDBConnector {
         return this.database.getCollection(collectionName).count();
     }
 
+    /**
+     * Import real dataset from FileSystem (Dexter format) 
+     */
     public void initializeAllCollections() {
         initializeCollection("Products");
         initializeCollection("RecordLinkage");
@@ -101,6 +104,13 @@ public class MongoDBConnector {
 
     }
 
+    /**
+     * Get sample of record linkages using sample method of MongoDB
+     * 
+     * @param size
+     * @param category
+     * @return
+     */
     public List<Document> getRLSample(int size, String category) {
         MongoCollection<Document> collection = this.database.getCollection("Products");
         List<Document> sample = new ArrayList<>();

@@ -199,7 +199,11 @@ public class FileDataConnector {
         printCSV(name, rows, header);
     }
 
-    // prints attributes' clusters
+    /**
+     * prints attributes' clusters, from Schema.
+     * @param name
+     * @param schema
+     */
     public void printMatchSchema(String name, Schema schema) {
         PrintWriter writer = null;
         JSONObject json = new JSONObject();

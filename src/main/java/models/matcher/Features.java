@@ -1,5 +1,14 @@
 package models.matcher;
 
+import matcher.TrainingSetGenerator;
+
+/**
+ * For provided pair of attributes (not present here), features + match probability (in case of traning set, always 0 or 1)
+ * 
+ * @author marco
+ * @see TrainingSetGenerator
+ *
+ */
 public class Features {
 
     private double sourceJSD = 0.0;

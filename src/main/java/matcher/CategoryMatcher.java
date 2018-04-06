@@ -23,6 +23,11 @@ import org.bson.Document;
 import connectors.MongoDBConnector;
 import connectors.RConnector;
 
+/**
+ * Class that actually computes the schema alignment using the classifier
+ * @author marco
+ *
+ */
 public class CategoryMatcher {
 
     private MongoDBConnector mdbc;
@@ -40,6 +45,21 @@ public class CategoryMatcher {
         this.r = r;
     }
 
+	/**
+	 * Launches the classifier to align the schema.
+	 * 
+	 * @param websites
+	 *            should be provided in linkage order. First is used as catalog,
+	 *            then for each following websites, attributes are affected to
+	 *            catalog attributes (or added as new attributes if they don't match
+	 *            to any other att)
+	 * @param category
+	 * @param cardinality
+	 * @param schemaMatch
+	 * @param useMI
+	 * @param matchToOne
+	 * @return
+	 */
     public boolean getMatch(List<String> websites, String category, int cardinality, Schema schemaMatch,
             boolean useMI, boolean matchToOne) {
         boolean matched = false;
@@ -318,6 +338,19 @@ public class CategoryMatcher {
         return true;
     }
 
+	/**
+	 * Given match probability for pairs of matches, select good pairs and bad
+	 * pairs:
+	 * <ul>
+	 * <li>If match < 0.5, discards it
+	 * <li>If an attribute has matches with different catalog atts, select the best
+	 * match (the one with highest match probabilty) and discards the others.
+	 * </ul>
+	 * 
+	 * @param df
+	 * @param predictions
+	 * @return
+	 */
     private Match filterMatch(DataFrame df, double[] predictions) {
         Match match = new Match();
         List<Double> filteredPredictions = new ArrayList<>();
@@ -403,13 +436,19 @@ public class CategoryMatcher {
         return indexes.values().size() > 0;
     }
 
-    /*
-     * The update consists in adding every attribute found in the matched source
-     * (even those not matched) and new attributes from the catalog (if there
-     * are)
-     */
+	/**
+	 * Insert pairs of attributes in schema.<br/>
+	 * The update consists in adding every attribute found in the matched source
+	 * (even those not matched) and new attributes from the catalog (if there are)
+	 *
+	 * @param schema
+	 * @param invIndexes
+	 * @param match
+	 * @param attributesLinkage
+	 */
     public void updateSchema(Schema schema, InvertedIndexesManager invIndexes, Match match,
             Map<String, Integer> attributesLinkage) {
+
         // add new catalog's attribute
         for (String catAttr : invIndexes.getCatalogIndex().keySet())
             if (!schema.getAttributesMap().containsKey(catAttr))

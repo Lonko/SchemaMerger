@@ -54,6 +54,11 @@ public class SourcesGenerator {
     // Map <Attribute, schema>
     private Map<String, List<String>> schemas = new HashMap<>();
     // Map <Attribute, linkage>
+    
+	/**
+	 * Number of source attributes for each cluster (all correspondent attributes
+	 * have same name in synthetic, sot it can be used as map key)
+	 */
     private Map<String, Integer> linkage = new HashMap<>();
     // Map <Attribute, fixed token>
     private Map<String, String> fixedTokens = new HashMap<>();

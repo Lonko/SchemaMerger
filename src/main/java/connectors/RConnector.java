@@ -90,6 +90,11 @@ public class RConnector {
         }
     }
 
+    /**
+     * Return probability of match given features between 2 attributes
+     * @param df
+     * @return
+     */
     public double[] classify(DataFrame df) {
         double[] predictions = null;
 

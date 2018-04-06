@@ -35,6 +35,7 @@ public class SyntheticDatasetGenerator {
     private Map<String, List<String>> attrValues;
     private List<String> sourcesBySize;
     private List<String> sourcesByLinkage;
+    /** @see #getAttrLinkage() */
     private Map<String, Integer> attrLinkage;
 
     public SyntheticDatasetGenerator(LaunchConfiguration lc) {
@@ -121,6 +122,12 @@ public class SyntheticDatasetGenerator {
         return this.sourcesByLinkage;
     }
 
+    /**
+	 * Number of source attributes for each cluster (all correspondent attributes
+	 * have same name in synthetic, sot it can be used as map key)
+	 *
+     * @return
+     */
     public Map<String, Integer> getAttrLinkage() {
         return this.attrLinkage;
     }

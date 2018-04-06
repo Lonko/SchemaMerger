@@ -25,7 +25,29 @@ import connectors.RConnector;
 
 public class Cohordinator {
 
-    public Cohordinator() {
+	/**
+	 * Define whether the model has already been trained
+	 */
+	//TODO move to configuration/args
+    private static final boolean ALREADY_TRAINED = true;
+    
+    /**
+     * List of sources in real dataset, ordered by linkage.
+     * In the dataset we already have a Schemas collection with sources, BUT we don't have the
+     * good order.
+     */
+    // TODO 1 move to configuration 2 COMPUTE this order using dataset
+	private static final List<String> SOURCES_SORTED_REAL_DATASET = Arrays.asList("gosale.com", "price-hunt.com", "shopping.dealtime.com");
+
+	/**
+	 * Se TRUE, gli attributi delle sorgenti che non matchano con nessun attributo
+	 * del catalogo vengono scartati. <br/>
+	 * OLD doc by Marco: "se true simula un'operazione di sintesi dei prodotti"
+	 * (???)
+	 */
+	private static final boolean WITH_REFERENCE = false;
+
+	public Cohordinator() {
 
     }
 
@@ -46,7 +68,7 @@ public class Cohordinator {
         return schema;
     }
 
-    /*
+    /**
      * checks the schemas of the sources in the selected categories and returns
      * the couples of sources with schemas that have an overlap of attribute
      * (based on their names) above 50% of the smallest of the two sources.
@@ -80,6 +102,14 @@ public class Cohordinator {
         return clonedSources;
     }
 
+    /**
+     * Launch the generation of tranining sets (cf {@link TrainingSetGenerator})
+     * 
+     * @param mdbc
+     * @param categories
+     * @param clonedSources
+     * @return
+     */
     public Map<String, List<String>> generateTrainingSets(MongoDBConnector mdbc, List<String> categories,
             Map<String, List<String>> clonedSources) {
 
@@ -140,12 +170,11 @@ public class Cohordinator {
         sdg.generateSources(reset);
         System.out.println("FINE GENERAZIONE DATASET");
 
-        boolean alreadyTrained = true;
         r.start();
         List<String> categories = config.getCategories();
         try {
             // Training / model loading
-            if (alreadyTrained) {
+            if (ALREADY_TRAINED) {
                 System.out.println("LOADING DEL MODEL");
                 r.loadModel(config.getModelPath());
                 System.out.println("FINE LOADING DEL MODEL");
@@ -199,20 +228,13 @@ public class Cohordinator {
     
     public void alignmentRealDataset(FileDataConnector fdc, MongoDBConnector mdbc, RConnector r, 
                                      Configurations config){
-        // Training / model loading
-        boolean alreadyTrained = true;
         r.start();
         //si possono definire più categorie nel fine di configurazione
         List<String> categories = config.getCategories();
         
-        /* È necessario avere la lista di sorgenti ordinate sulle quali fare
-         * schema alignment
-         */
-        List<String> sources = Arrays.asList("gosale.com", "price-hunt.com", "shopping.dealtime.com");
-
         try{
             // Training / model loading
-            if (alreadyTrained) {
+            if (ALREADY_TRAINED) {
                 System.out.println("LOADING DEL MODEL");
                 r.loadModel(config.getModelPath());
                 System.out.println("FINE LOADING DEL MODEL");
@@ -230,9 +252,7 @@ public class Cohordinator {
             // Classification
             System.out.println("INIZIO GENERAZIONE SCHEMA");
             CategoryMatcher cm = new CategoryMatcher(mdbc, r);
-            //withReference -> se true simula un'operazione di sintesi dei prodotti.
-            boolean withReference = false;
-            Schema schema = matchAllSourcesInCategory(sources, categories.get(0), cm, 0, true, withReference);
+            Schema schema = matchAllSourcesInCategory(SOURCES_SORTED_REAL_DATASET, categories.get(0), cm, 0, true, WITH_REFERENCE);
             fdc.printMatchSchema("clusters", schema);
             System.out.println("FINE GENERAZIONE SCHEMA");
         } finally {

@@ -7,6 +7,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Contains all pair of attributes matched.
+ * @author marco
+ *
+ */
+//TODO remove totalLinkage and matchlinkage that are deprecated
 public class Schema {
     Map<String, String> attributesMap;
     Map<String, Integer> totalLinkage;
