@@ -18,6 +18,7 @@ import matcher.FeatureExtractor;
 import matcher.TrainingSetGenerator;
 import models.generator.Configurations;
 import models.generator.LaunchConfiguration;
+import models.matcher.EvaluationMetrics;
 import models.matcher.Schema;
 import connectors.FileDataConnector;
 import connectors.MongoDBConnector;
@@ -124,10 +125,10 @@ public class Cohordinator {
         return trainingSets;
     }
 
-    public void evaluateSyntheticResults(List<List<String>> clusters, Map<String, Integer> expectedClusterSizes) {
+    public EvaluationMetrics evaluateSyntheticResults(List<List<String>> clusters, Map<String, Integer> expectedClusterSizes) {
         DynamicCombinationsCalculator dcc = new DynamicCombinationsCalculator();
         int truePositives = 0, falsePositives = 0, expectedPositives = 0;
-        double p, r, f;
+        double p, r;
 
         // calculate expected positives
         for (int clusterSize : expectedClusterSizes.values())
@@ -144,20 +145,17 @@ public class Cohordinator {
                         .collect(Collectors.groupingBy(Function.identity(), Collectors.counting())).values();
                 List<Long> counters = new ArrayList<>(cCollection);
                 // true positives
-                truePositives += counters.stream().mapToInt(Long::intValue)
+                int truePositivesCluster = counters.stream().mapToInt(Long::intValue)
                         .map(c -> dcc.calculateCombinations(c, 2)).sum();
+				truePositives += truePositivesCluster;
                 // false positives
-                falsePositives += counters.stream().mapToInt(Long::intValue).map(c -> c * (size - c)).sum();
+                falsePositives += dcc.calculateCombinations(size, 2) - truePositivesCluster;
             }
         }
-
-        p = truePositives / (double) (truePositives + falsePositives);
-        r = truePositives / (double) (expectedPositives);
-        f = 2 * (p * r) / (p + r);
-
-        System.out.println("PRECISION = " + p);
-        System.out.println("RECALL = " + r);
-        System.out.println("F-MEASURE = " + f);
+        int computedPositives = truePositives + falsePositives;
+		p = computedPositives == 0 ? 1 : truePositives / (double) computedPositives;
+        r = expectedPositives == 0 ? 1 : truePositives / (double) (expectedPositives);
+        return new EvaluationMetrics(p,r);
     }
     
     public void alignmentSyntheticDataset(FileDataConnector fdc, MongoDBConnector mdbc, RConnector r, 
@@ -219,7 +217,8 @@ public class Cohordinator {
                 List<String> validAttributes = mdbc.getSingleSchema(category, sources.get(0));
                 sizes.keySet().retainAll(validAttributes);
             }
-            evaluateSyntheticResults(clusters, sizes);
+            EvaluationMetrics evaluateSyntheticResults = evaluateSyntheticResults(clusters, sizes);
+            System.out.println(evaluateSyntheticResults.toString());
             System.out.println("FINE VALUTAZIONE RISULTATI");
         } finally {
             r.stop();
