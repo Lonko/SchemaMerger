@@ -9,13 +9,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.bson.Document;
+
+import connectors.dao.AlignmentDao;
 import models.matcher.BagsOfWordsManager;
 import models.matcher.Features;
 import models.matcher.Tuple;
-
-import org.bson.Document;
-
-import connectors.MongoDBConnector;
 
 /**
  * Generator of training sets, ie sets of pairs of attributes, with features computed AND match/mismatch
@@ -25,13 +24,13 @@ import connectors.MongoDBConnector;
  */
 public class TrainingSetGenerator {
 
-    private MongoDBConnector mdbc;
+    private AlignmentDao dao;
     private FeatureExtractor fe;
     private Map<String, List<String>> clonedSources;
 
-    public TrainingSetGenerator(MongoDBConnector conn, FeatureExtractor fe,
+    public TrainingSetGenerator(AlignmentDao dao, FeatureExtractor fe,
             Map<String, List<String>> clSources) {
-        this.mdbc = conn;
+        this.dao = dao;
         this.fe = new FeatureExtractor();
         this.clonedSources = clSources;
     }
@@ -44,7 +43,7 @@ public class TrainingSetGenerator {
         int newSizeP, newSizeN, sizeP = 0, sizeN = 0, tentatives = 0;
 
         do {
-            List<Document> sample = this.mdbc.getRLSample(sampleSize, category);
+            List<Document> sample = this.dao.getRLSample(sampleSize, category);
             Map<String, List<Tuple>> newExamples = getExamples(sample, setSize, ratio);
             newSizeP = newExamples.get("positives").size();
             newSizeN = newExamples.get("negatives").size();
@@ -115,7 +114,7 @@ public class TrainingSetGenerator {
             List<String> rlUrls = doc1.get("linkage", List.class);
 
             for (String url : rlUrls) {
-                Document doc2 = this.mdbc.getIfValid(url);
+                Document doc2 = this.dao.getIfValid(url);
 
                 if (doc2 != null) {
                     String website1 = doc1.getString("website");
@@ -212,14 +211,14 @@ public class TrainingSetGenerator {
         String attribute1 = t.getAttribute1();
         String attribute2 = t.getAttribute2();
         String category = t.getCategory();
-        List<Document> sList1 = this.mdbc.getProds(category, website1, website2, attribute1);
-        // List<Document> wList1 = this.mdbc.getProds("", website1, attribute1);
-        List<Document> cList1 = this.mdbc.getProds(category, "", website2, attribute1);
+        List<Document> sList1 = this.dao.getProds(category, website1, website2, attribute1);
+        // List<Document> wList1 = this.dao.getProds("", website1, attribute1);
+        List<Document> cList1 = this.dao.getProds(category, "", website2, attribute1);
 
-        List<Document[]> sList2 = this.mdbc.getProdsInRL(sList1, website2, attribute2);
-        // List<Document[]> wList2 = this.mdbc.getProdsInRL(wList1, website2,
+        List<Document[]> sList2 = this.dao.getProdsInRL(sList1, website2, attribute2);
+        // List<Document[]> wList2 = this.dao.getProdsInRL(wList1, website2,
         // attribute2);
-        List<Document[]> cList2 = this.mdbc.getProdsInRL(cList1, website2, attribute2);
+        List<Document[]> cList2 = this.dao.getProdsInRL(cList1, website2, attribute2);
 
         try {
             features = computeFeatures(sList2, new ArrayList<Document[]>(), cList2, attribute1, attribute2,

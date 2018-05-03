@@ -14,11 +14,11 @@ import models.matcher.EvaluationMetrics;
 
 public class CohordinatorTest {
 	
-	private Cohordinator coho;
+	private DatasetAlignmentAlgorithm alignment;
 
 	@Before
 	public void setUp() throws Exception {
-		this.coho = new Cohordinator();
+		this.alignment = new DatasetAlignmentAlgorithm(null, null, null, null);
 	}
 
 	@Test
@@ -84,7 +84,7 @@ public class CohordinatorTest {
 				.collect(Collectors.groupingBy(e -> e, Collectors.reducing(0, e -> 1, Integer::sum)));
 		List<List<String>> computedClusters = inputs.stream().map(input -> input.stream().map(nb -> nb.toString()+"###test").collect(Collectors.toList()))
 				.collect(Collectors.toList());
-		EvaluationMetrics results = this.coho.evaluateSyntheticResults(computedClusters, expectedClusters);
+		EvaluationMetrics results = this.alignment.evaluateSyntheticResults(computedClusters, expectedClusters);
 		assertEquals(expectedP, results.getPrecision(), 0.001);
 		assertEquals(expectedR, results.getRecall(), 0.001);
 	}

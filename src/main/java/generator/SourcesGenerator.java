@@ -9,9 +9,9 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-import org.bson.Document;
-
-import connectors.MongoDBConnector;
+import connectors.dao.SyntheticDatasetDao;
+import model.CatalogueProductPage;
+import model.SourceProductPage;
 import models.generator.Configurations;
 import models.generator.ConstantCurveFunction;
 import models.generator.CurveFunction;
@@ -19,7 +19,6 @@ import models.generator.RationalCurveFunction;
 
 public class SourcesGenerator {
 
-    private static final int BATCH_SIZE = 100;
     // random
     private double randomError;
     // for example 1 inch = 2.5 cm (affects all tokens)
@@ -30,7 +29,7 @@ public class SourcesGenerator {
     private double missingLinkage;
     // probability of a wrong linkage url
     private double linkageError;
-    private MongoDBConnector mdbc;
+    private SyntheticDatasetDao dao;
     private StringGenerator stringGenerator;
     private CurveFunction aExtLinkageCurve;
     private CurveFunction sourceSizes;
@@ -65,11 +64,10 @@ public class SourcesGenerator {
     // Map <Attribute, values>
     private Map<String, List<String>> values = new HashMap<>();
 
-    public SourcesGenerator(MongoDBConnector mdbc, Configurations conf, StringGenerator sg,
+    public SourcesGenerator(SyntheticDatasetDao dao, Configurations conf, StringGenerator sg,
             CurveFunction sizes, CurveFunction prods, Map<String, String> fixedTokens,
             Map<String, List<String>> values) {
-
-        this.mdbc = mdbc;
+    	this.dao = dao;
         String curveType = conf.getAttrCurveType();
         this.nSources = conf.getSources();
         this.nAttributes = conf.getAttributes();
@@ -297,7 +295,7 @@ public class SourcesGenerator {
         return prodsAttrs;
     }
 
-    /*
+    /**
      * assigns an error type (including "none") to each attribute; does not
      * include random error, which is taken into consideration during the actual
      * product page creation
@@ -367,9 +365,15 @@ public class SourcesGenerator {
         return fErrors;
     }
 
-    // updates attributes values by applying the new values based on the errors
-    private Document generateSpecs(Document oldSpecs, Map<String, List<String>> newValues, List<String> attrs) {
-        Document newSpecs = new Document();
+    /**
+     * Updates attributes values by applying the new values based on the errors
+     * 
+     * @param page
+     * @param oldSpecs
+     * @param newValues
+     * @param attrs
+     */
+    private void addSpecsToProductPage(SourceProductPage page, Map<String, String> oldSpecs, Map<String, List<String>> newValues, List<String> attrs) {
         Random rand = new Random();
 
         // check each attribute
@@ -377,7 +381,7 @@ public class SourcesGenerator {
             // continue if attribute has not been assigned to this product
             if (!attrs.contains(attribute))
                 continue;
-            String oldValue = oldSpecs.getString(attribute);
+            String oldValue = oldSpecs.get(attribute);
             String newValue = oldValue;
             // get modified value (with error) if necessary
             if (newValues.containsKey(attribute)) {
@@ -393,23 +397,20 @@ public class SourcesGenerator {
                 else
                     tokens.add(token);
             }
-            newSpecs.append(attribute, String.join(" ", tokens));
+            page.addAttributeValue(attribute, String.join(" ", tokens));
         }
-
-        return newSpecs;
     }
 
     // generates the products' pages for the source
-    private List<Document> createProductsPages(String source, Map<String, List<String>> newValues,
-            Map<Integer, List<String>> pAttrs, List<Document> products) {
-        List<Document> prodPages = new ArrayList<>();
+    private List<SourceProductPage> createProductsPages(String source, Map<String, List<String>> newValues,
+            Map<Integer, List<String>> pAttrs, List<CatalogueProductPage> products) {
+        List<SourceProductPage> prodPages = new ArrayList<>();
         Random rnd = new Random();
 
-        for (Document prod : products) {
-            int realIds = prod.getInteger("id");
+        for (CatalogueProductPage prod : products) {
+            int realIds = prod.getId();
             List<String> attrs = pAttrs.get(realIds);
-            Document page = new Document();
-            Document newSpecs = generateSpecs(prod.get("spec", Document.class), newValues, attrs);
+            
             // linkage and IDs
             List<String> linkage = new ArrayList<>();
             List<Integer> ids = buildProductIds(rnd, realIds);
@@ -420,14 +421,12 @@ public class SourcesGenerator {
             		}
                 }
             }
+            
+            String url = source + "/" + realIds + "/";
+            SourceProductPage page = new SourceProductPage(this.categories.get(0), 
+            		url, source, linkage, ids);
 
-            page.append("category", this.categories.get(0));
-            page.append("url", source + "/" + realIds + "/");
-            page.append("spec", newSpecs);
-            page.append("linkage", linkage);
-            page.append("ids", ids);
-            page.append("website", source);
-
+            addSpecsToProductPage(page, prod.getSpecifications(), newValues, attrs);
             prodPages.add(page);
         }
 
@@ -461,32 +460,20 @@ public class SourcesGenerator {
 		return ids;
 	}
 
-    // generates all sources
-    private List<Document> createSource(String sourceName, int size, List<Document> products) {
+    /**
+     * Generates all pages in a source
+     * @param sourceName
+     * @param size
+     * @param products
+     * @return
+     */
+    private List<SourceProductPage> createSource(String sourceName, int size, List<CatalogueProductPage> products) {
         List<String> schema = this.schemas.get(sourceName);
         CurveFunction aIntLinkage = new RationalCurveFunction("2", size, schema.size(), 1);
         Map<Integer, List<String>> prodsAttrs = getProdsAttrs(sourceName, schema, aIntLinkage);
         Map<String, String> attrErrors = checkErrors(schema);
         Map<String, List<String>> newValues = applyErrors(schema, attrErrors);
         return createProductsPages(sourceName, newValues, prodsAttrs, products);
-    }
-
-    // uploads a source to mongodb
-    private void uploadSource(List<Document> productPages) {
-        int uploadedProds = 0;
-
-        // each iteration is a batch of products to upload
-        while (uploadedProds != productPages.size()) {
-            int size = (productPages.size() - uploadedProds > BATCH_SIZE) ? BATCH_SIZE : productPages.size()
-                    - uploadedProds;
-            List<Document> batch = new ArrayList<>();
-            for (int i = 0; i < size; i++) {
-                int index = uploadedProds + i;
-                batch.add(productPages.get(index));
-            }
-            this.mdbc.insertBatch(batch, "Products");
-            uploadedProds += size;
-        }
     }
 
     // assigns attributes and products to each source
@@ -547,28 +534,24 @@ public class SourcesGenerator {
 
     // generates the complete sources and returns attributes' linkage info
     public Map<String, Integer> createSources(List<String> sourcesNames, boolean delete) {
-        List<Document> sourcePages;
+        List<SourceProductPage> sourcePages;
 
         // generates sources
         if(delete)
-            this.mdbc.dropCollection("Products");
+        	this.dao.deleteAllSourceProductPages();
         
         for (int i = 0; i < sourcesNames.size(); i++) {
             String source = sourcesNames.get(i);
             int size = this.sourceSizes.getYValues()[i];
             List<Integer> ids = this.source2Ids.get(source);
-            List<Document> products = this.mdbc.getFromCatalogue(ids);
+            List<CatalogueProductPage> products = this.dao.getCatalogueProductsWithIds(ids);
             sourcePages = createSource(source, size, products);
-            uploadSource(sourcePages);
+            this.dao.uploadSource(sourcePages);
 
             System.out.println("Sorgenti caricate: " + (i + 1) + "\t(# pagine della corrente: "
                     + sourcePages.size() + ")");
         }
-
-        this.mdbc.addSyntheticProductsIndexes();
-        this.mdbc.dropCollection("Schemas");
-        this.mdbc.initializeCollection("Schemas");
-
+        this.dao.finalizeSourceUpload();
         return this.linkage;
     }
 }

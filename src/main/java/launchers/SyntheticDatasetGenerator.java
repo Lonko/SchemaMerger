@@ -1,33 +1,35 @@
 package launchers;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+
+import connectors.FileDataConnector;
+import connectors.MongoDbConnectionFactory;
+import connectors.dao.SyntheticDatasetDao;
+import connectors.dao.MongoSyntheticDao;
 import generator.CatalogueGenerator;
 import generator.DictionaryStringGenerator;
 import generator.RandomStringGenerator;
 import generator.SourcesGenerator;
 import generator.StringGenerator;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Scanner;
-
-import org.bson.Document;
-
-import connectors.FileDataConnector;
-import connectors.MongoDBConnector;
+import model.CatalogueProductPage;
 import models.generator.Configurations;
 import models.generator.CurveFunction;
 import models.generator.LaunchConfiguration;
 
+/**
+ * Main class for synthetic dataset generation
+ * 
+ * @author federico
+ *
+ */
 public class SyntheticDatasetGenerator {
 
     private static final int SOURCE_NAME_LENGTH = 15;
     private static final int ATTRIBUTE_NAME_LENGTH = 7;
     private static final int TOKEN_LENGTH = 4;
-    private static final int BATCH_SIZE = 100;
-    private FileDataConnector fdc;
     private Configurations conf;
-    private MongoDBConnector mdbc;
     private StringGenerator sg;
     private CurveFunction sizes;
     private CurveFunction prodLinkage;
@@ -37,55 +39,43 @@ public class SyntheticDatasetGenerator {
     private List<String> sourcesByLinkage;
     /** @see #getAttrLinkage() */
     private Map<String, Integer> attrLinkage;
+    
+    private SyntheticDatasetDao catalogueDao;
+     
+    public SyntheticDatasetGenerator(FileDataConnector fdc) {
+    	this(fdc, new Configurations(fdc.readConfig()));
+    }
+    
+    public SyntheticDatasetGenerator(FileDataConnector fdc, Configurations conf) {
+		this(conf, generateSGFromConf(conf), generateDaoFromConf(fdc, conf));
+	}    
+    
+    private static SyntheticDatasetDao generateDaoFromConf(FileDataConnector fdc2, Configurations conf2) {
+    	MongoDbConnectionFactory factory = MongoDbConnectionFactory.getMongoInstance(conf2.getMongoURI(), conf2.getDatabaseName());
+		return new MongoSyntheticDao(factory);
+	}
 
-    public SyntheticDatasetGenerator(LaunchConfiguration lc) {
-        this.fdc = new FileDataConnector(lc.getConfigFile());
-        this.conf = new Configurations(fdc.readConfig());
-        this.mdbc = new MongoDBConnector(conf.getMongoURI(), conf.getDatabaseName(), this.fdc);
-        String path = conf.getStringPathFile();
+	private static StringGenerator generateSGFromConf(Configurations conf2) {
+        String path = conf2.getStringPathFile();
         if (path.equals(""))
-            this.sg = new RandomStringGenerator(SOURCE_NAME_LENGTH, ATTRIBUTE_NAME_LENGTH, TOKEN_LENGTH);
+            return new RandomStringGenerator(SOURCE_NAME_LENGTH, ATTRIBUTE_NAME_LENGTH, TOKEN_LENGTH);
         else
-            this.sg = new DictionaryStringGenerator(path);
-    }
+            return new DictionaryStringGenerator(path);
+	}
 
-    public SyntheticDatasetGenerator(FileDataConnector fdc, MongoDBConnector mdbc, Configurations conf) {
-        this.fdc = fdc;
-        this.conf = conf;
-        this.mdbc = mdbc;
-        String path = conf.getStringPathFile();
-        if (path.equals(""))
-            this.sg = new RandomStringGenerator(SOURCE_NAME_LENGTH, ATTRIBUTE_NAME_LENGTH, TOKEN_LENGTH);
-        else
-            this.sg = new DictionaryStringGenerator(path);
-    }
+	public SyntheticDatasetGenerator(Configurations conf, StringGenerator sg,
+			SyntheticDatasetDao catalogueDao) {
+		super();
+		this.conf = conf;
+		this.sg = sg;
+		this.catalogueDao = catalogueDao;
+	}
 
-    // upload Catalogue to MongoDB in batches
-    private void uploadCatalogue(List<Document> catalogue, boolean delete) {
-        if(delete)
-            this.mdbc.dropCollection("Catalogue");
-        
-        int uploadedProds = 0;
-
-        // each iteration is a batch of products to upload
-        while (uploadedProds != catalogue.size()) {
-            int size = (catalogue.size() - uploadedProds > BATCH_SIZE) ? BATCH_SIZE : catalogue.size()
-                    - uploadedProds;
-            List<Document> batch = new ArrayList<>();
-            for (int i = 0; i < size; i++) {
-                int id = uploadedProds + i;
-                batch.add(catalogue.get(id));
-            }
-            this.mdbc.insertBatch(batch, "Catalogue");
-            uploadedProds += size;
-        }
-    }
-
-    // generate and upload catalogue
+	// generate and upload catalogue
     public void generateCatalogue(boolean delete) {
         CatalogueGenerator cg = new CatalogueGenerator(this.conf, this.sg);
-        List<Document> catalogue = cg.createCatalogue();
-        uploadCatalogue(catalogue, delete);
+        List<CatalogueProductPage> catalogue = cg.createCatalogue();
+        this.catalogueDao.uploadCatalogue(catalogue, delete);
         this.sizes = cg.getSizeCurve();
         this.prodLinkage = cg.getProductLinkageCurve();
         this.attrFixedTokens = cg.getAttrFixedToken();
@@ -94,7 +84,7 @@ public class SyntheticDatasetGenerator {
 
     // generate and upload sources
     public void generateSources(boolean delete) {
-        SourcesGenerator sg = new SourcesGenerator(this.mdbc, this.conf, this.sg, this.sizes,
+        SourcesGenerator sg = new SourcesGenerator(this.catalogueDao, this.conf, this.sg, this.sizes,
                 this.prodLinkage, this.attrFixedTokens, this.attrValues);
         this.sourcesBySize = sg.prepareSources();
         this.attrLinkage = sg.createSources(this.sourcesBySize, delete);
@@ -134,7 +124,8 @@ public class SyntheticDatasetGenerator {
 
     public static void main(String[] args) {
         LaunchConfiguration lc = LaunchConfiguration.getConfigurationFromArgs(args);
-        SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator(lc);
+        FileDataConnector fdc = new FileDataConnector(lc.getConfigFile());
+        SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator(fdc);
         System.out.println("DELETE EXISTING DATASET? (Y/N)");
         try (Scanner scanner = new Scanner(System.in)){
         	boolean delete = Character.toLowerCase(scanner.next().charAt(0)) == 'y';

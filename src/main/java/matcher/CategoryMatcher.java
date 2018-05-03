@@ -11,17 +11,16 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.bson.Document;
+
+import connectors.RConnector;
+import connectors.dao.AlignmentDao;
 import models.matcher.BagsOfWordsManager;
 import models.matcher.DataFrame;
 import models.matcher.Features;
 import models.matcher.InvertedIndexesManager;
 import models.matcher.Match;
 import models.matcher.Schema;
-
-import org.bson.Document;
-
-import connectors.MongoDBConnector;
-import connectors.RConnector;
 
 /**
  * Class that actually computes the schema alignment using the classifier
@@ -30,17 +29,17 @@ import connectors.RConnector;
  */
 public class CategoryMatcher {
 
-    private MongoDBConnector mdbc;
+    private AlignmentDao dao;
     private FeatureExtractor fe;
     private RConnector r;
 
-    public CategoryMatcher(MongoDBConnector conn) {
-        this.mdbc = conn;
+    public CategoryMatcher(AlignmentDao dao) {
+        this.dao = dao;
         this.fe = new FeatureExtractor();
     }
 
-    public CategoryMatcher(MongoDBConnector conn, RConnector r) {
-        this.mdbc = conn;
+    public CategoryMatcher(AlignmentDao dao, RConnector r) {
+        this.dao = dao;
         this.fe = new FeatureExtractor();
         this.r = r;
     }
@@ -66,7 +65,7 @@ public class CategoryMatcher {
         // last website is the one to be matched with the catalog
         String newSource = websites.remove(websites.size() - 1);
         // linked page -> pages in catalog
-        Map<Document, List<Document>> linkageMap = this.mdbc.getProdsInRL(websites, category);
+        Map<Document, List<Document>> linkageMap = this.dao.getProdsInRL(websites, category);
         // check if new source is matchable
         if (checkIfValidSource(newSource, linkageMap.keySet())) {
             // pages in catalog(merged) -> linked page

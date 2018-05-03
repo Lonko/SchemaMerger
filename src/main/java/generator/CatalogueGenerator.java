@@ -11,8 +11,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.bson.Document;
-
+import model.CatalogueProductPage;
 import models.generator.Configurations;
 import models.generator.ConstantCurveFunction;
 import models.generator.CurveFunction;
@@ -20,7 +19,8 @@ import models.generator.RationalCurveFunction;
 
 public class CatalogueGenerator {
 
-    private StringGenerator stringGenerator;
+    private static final String CATEGORY_NAME_FOR_SYNTHETIC_DATASET = "fakeCategory";
+	private StringGenerator stringGenerator;
     private int maxSizeSources;
     private int minSizeSources;
     private int nSources;
@@ -181,39 +181,33 @@ public class CatalogueGenerator {
     }
 
     // generates a single product
-    private Document generateProduct(int id) {
-        Document prod = new Document();
-        Document specs = new Document();
-        prod.append("id", id);
-        prod.append("category", "fakeCategory");
-
+    private CatalogueProductPage generateProductPage(int id) {
+    	CatalogueProductPage page = new CatalogueProductPage(id, CATEGORY_NAME_FOR_SYNTHETIC_DATASET);
         for (Map.Entry<String, List<String>> attribute : this.attrValues.entrySet()) {
             String name = attribute.getKey();
             int index = new Random().nextInt(attribute.getValue().size());
             String value = attribute.getValue().get(index);
-            specs.append(name, value);
+            page.addAttributeValue(name, value);
         }
-        prod.append("spec", specs);
-
-        return prod;
+        return page;
     }
 
     // generates all products and adds them to the catalogue
-    private List<Document> generateProducts() {
-        List<Document> products = new ArrayList<Document>();
+    private List<CatalogueProductPage> generateProducts() {
+        List<CatalogueProductPage> products = new ArrayList<CatalogueProductPage>();
         List<String> attributes = new ArrayList<>();
         attributes.addAll(this.attrValues.keySet());
 
         // each iteration is a batch of products to upload
         for (int i = 0; i < this.nProducts; i++) {
-            Document prod = generateProduct(i);
+        	CatalogueProductPage prod = generateProductPage(i);
             products.add(prod);
         }
 
         return products;
     }
 
-    public List<Document> createCatalogue() {
+    public List<CatalogueProductPage> createCatalogue() {
         prepareAttributes();
         return generateProducts();
     }
