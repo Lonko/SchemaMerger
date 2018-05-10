@@ -2,12 +2,14 @@ package connectors.dao;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
 
@@ -21,6 +23,9 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Projections;
 
 import connectors.MongoDbConnectionFactory;
+import connectors.MongoDbUtils;
+import model.Source;
+import model.SourceProductPage;
 
 public class MongoAlignmentDao implements AlignmentDao {
 
@@ -32,13 +37,13 @@ public class MongoAlignmentDao implements AlignmentDao {
 	}
 
     @Override
-    public List<Document> getRLSample(int size, String category) {
+    public List<SourceProductPage> getRLSample(int size, String category) {
     	// uses sample method of MongoDB
-        MongoCollection<Document> collection = this.database.getCollection("Products");
-        List<Document> sample = new ArrayList<>();
-        Bson eqFilter = Filters.eq("category", category);
-        Bson neFilterS = Filters.ne("spec", new Document());
-        Bson neFilterL = Filters.ne("linkage", Collections.EMPTY_LIST);
+        MongoCollection<Document> collection = this.database.getCollection(MongoDbUtils.PRODUCTS_COLLECTION_NAME);
+        List<SourceProductPage> sample = new ArrayList<>();
+        Bson eqFilter = Filters.eq(MongoDbUtils.CATEGORY, category);
+        Bson neFilterS = Filters.ne(MongoDbUtils.SPECS, new Document());
+        Bson neFilterL = Filters.ne(MongoDbUtils.LINKAGE, Collections.EMPTY_LIST);
         Bson andFilter;
         if (category.equals("all"))
             andFilter = Filters.and(neFilterS, neFilterL);
@@ -46,52 +51,52 @@ public class MongoAlignmentDao implements AlignmentDao {
             andFilter = Filters.and(neFilterS, neFilterL, eqFilter);
         Bson sampleBson = Aggregates.sample(size);
         Bson matchBson = Aggregates.match(andFilter);
-        collection.aggregate(Arrays.asList(matchBson, sampleBson)).forEach((Document d) -> sample.add(d));
+        collection.aggregate(Arrays.asList(matchBson, sampleBson))
+        	.forEach((Document d) -> sample.add(MongoDbUtils.convertDocumentToProductPage(d)));
 
         return sample;
     }
     
     @Override
-    public Map<String, List<String>> getSchemas(List<String> categories) {
-        Map<String, List<String>> fetchedSchemas = new TreeMap<>();
+    public Map<Source, List<String>> getSchemas(List<String> categories) {
+        Map<Source, List<String>> fetchedSchemas = new TreeMap<>();
 
         this.database
-                .getCollection("Schemas")
-                .find(Filters.and(Filters.in("category", categories),
-                        Filters.ne("attributes", Collections.EMPTY_LIST))).forEach((Document d) -> {
-                    String website = d.getString("website");
-                    String category = d.getString("category");
+                .getCollection(MongoDbUtils.SCHEMAS_COLLECTION)
+                .find(Filters.and(Filters.in(MongoDbUtils.CATEGORY, categories),
+                        Filters.ne(MongoDbUtils.ATTRIBUTES, Collections.EMPTY_LIST))).forEach((Document d) -> {
+                    Source source = new Source(d.getString(MongoDbUtils.CATEGORY), d.getString(MongoDbUtils.WEBSITE));
                     @SuppressWarnings("unchecked")
-                    List<String> attributes = d.get("attributes", List.class);
-                    fetchedSchemas.put(category + "###" + website, attributes);
+                    List<String> attributes = d.get(MongoDbUtils.ATTRIBUTES, List.class);
+                    fetchedSchemas.put(source, attributes);
                 });
 
         return fetchedSchemas;
     }
     
     @Override
-    public List<String> getSingleSchema(String category, String website){
-        Bson wFilter = Filters.eq("website", website);
-        Bson cFilter = Filters.eq("category", category);
+    public List<String> getSingleSchema(Source source){
+        Bson wFilter = Filters.eq(MongoDbUtils.WEBSITE, source.getWebsite());
+        Bson cFilter = Filters.eq(MongoDbUtils.CATEGORY, source.getCategory());
         Bson andFilter = Filters.and(wFilter, cFilter);
 
         @SuppressWarnings("unchecked")
-        List<String> fetchedSchema = this.database.getCollection("Schemas").find(andFilter).first()
-                                                  .get("attributes", List.class);
+        List<String> fetchedSchema = this.database.getCollection(MongoDbUtils.SCHEMAS_COLLECTION).find(andFilter).first()
+                                                  .get(MongoDbUtils.ATTRIBUTES, List.class);
         
         return fetchedSchema;
     }
     
     //TODO extract some parts
  	@Override
- 	public Map<Document, List<Document>> getProdsInRL(List<String> websites, String category) {
- 		Map<Document, List<Document>> rlMap = new HashMap<>();
- 		MongoCollection<Document> collection = this.database.getCollection("Products");
+ 	public Map<SourceProductPage, List<SourceProductPage>> getProdsInRL(List<String> websites, String category) {
+ 		Map<SourceProductPage, List<SourceProductPage>> rlMap = new HashMap<>();
+ 		MongoCollection<Document> collection = this.database.getCollection(MongoDbUtils.PRODUCTS_COLLECTION_NAME);
 
- 		Bson wFilter = Filters.in("website", websites);
- 		Bson cFilter = Filters.eq("category", category);
- 		Bson sFilter = Filters.ne("spec", new Document());
- 		Bson lFilter = Filters.ne("linkage", Collections.EMPTY_LIST);
+ 		Bson wFilter = Filters.in(MongoDbUtils.WEBSITE, websites);
+ 		Bson cFilter = Filters.eq(MongoDbUtils.CATEGORY, category);
+ 		Bson sFilter = Filters.ne(MongoDbUtils.SPECS, new Document());
+ 		Bson lFilter = Filters.ne(MongoDbUtils.LINKAGE, Collections.EMPTY_LIST);
  		Bson andFilter = Filters.and(wFilter, cFilter, sFilter, lFilter);
  		Bson matchBson = Aggregates.match(andFilter);
  		Bson unwindBson = Aggregates.unwind("$linkage");
@@ -103,21 +108,21 @@ public class MongoAlignmentDao implements AlignmentDao {
 
  		// create map <URL of a linked page, page in catalog>
  		Map<String, Document> linkageUrls = new HashMap<>();
- 		prods.stream().forEach(p -> linkageUrls.put(p.getString("linkage"), p));
+ 		prods.stream().forEach(p -> linkageUrls.put(p.getString(MongoDbUtils.LINKAGE), p));
 
  		// get all the linked product's pages
  		// <url, list of document in linkage with the one associated to the key>
- 		Map<String, List<Document>> intL = new HashMap<>();
+ 		Map<String, List<SourceProductPage>> intL = new HashMap<>();
  		// <linked page, page in catalog>
  		Map<Document, Document> extL = new HashMap<>();
- 		Bson uFilter = Filters.in("url", linkageUrls.keySet());
+ 		Bson uFilter = Filters.in(MongoDbUtils.URL, linkageUrls.keySet());
  		andFilter = Filters.and(cFilter, uFilter, sFilter);
- 		collection.find(andFilter).projection(Projections.include("spec", "url", "website")).forEach((Document p) -> {
+ 		collection.find(andFilter).projection(Projections.include(MongoDbUtils.SPECS, MongoDbUtils.URL, MongoDbUtils.WEBSITE)).forEach((Document p) -> {
  			// if it's not a page in the
  			// catalog create new map
  			// entry
- 			if (!websites.contains(getDomain(p.getString("url")))) {
- 				Document catalogPage = linkageUrls.get(p.getString("url"));
+ 			if (!websites.contains(getDomain(p.getString(MongoDbUtils.URL)))) {
+ 				Document catalogPage = linkageUrls.get(p.getString(MongoDbUtils.URL));
  				extL.put(p, catalogPage);
  			}
  			// if it's a page in the
@@ -125,13 +130,13 @@ public class MongoAlignmentDao implements AlignmentDao {
  			// temporary
  			// list
  			else {
- 				Document rlDoc = linkageUrls.get(p.getString("url"));
- 				String urlP = p.getString("url");
- 				String urlRlDoc = linkageUrls.get(p.getString("url")).getString("url");
- 				List<Document> linkageP = intL.getOrDefault(urlP, new ArrayList<Document>());
- 				List<Document> linkageRlDoc = intL.getOrDefault(urlRlDoc, new ArrayList<Document>());
- 				linkageP.add(rlDoc);
- 				linkageRlDoc.add(p);
+ 				Document rlDoc = linkageUrls.get(p.getString(MongoDbUtils.URL));
+ 				String urlP = p.getString(MongoDbUtils.URL);
+ 				String urlRlDoc = linkageUrls.get(p.getString(MongoDbUtils.URL)).getString(MongoDbUtils.URL);
+ 				List<SourceProductPage> linkageP = intL.getOrDefault(urlP, new ArrayList<SourceProductPage>());
+ 				List<SourceProductPage> linkageRlDoc = intL.getOrDefault(urlRlDoc, new ArrayList<SourceProductPage>());
+ 				linkageP.add(MongoDbUtils.convertDocumentToProductPage(rlDoc));
+ 				linkageRlDoc.add(MongoDbUtils.convertDocumentToProductPage(p));
  				intL.put(urlP, linkageP);
  				intL.put(urlRlDoc, linkageRlDoc);
  			}
@@ -139,12 +144,12 @@ public class MongoAlignmentDao implements AlignmentDao {
 
  		// add internal linkage to the lists in rlMap
  		for (Map.Entry<Document, Document> entry : extL.entrySet()) {
- 			List<Document> linkageList = new ArrayList<>();
- 			if (intL.containsKey(entry.getValue().getString("url")))
- 				linkageList = intL.get(entry.getValue().getString("url"));
+ 			List<SourceProductPage> linkageList = new ArrayList<>();
+ 			if (intL.containsKey(entry.getValue().getString(MongoDbUtils.URL)))
+ 				linkageList = intL.get(entry.getValue().getString(MongoDbUtils.URL));
  			else
- 				linkageList.add(entry.getValue());
- 			rlMap.put(entry.getKey(), linkageList);
+ 				linkageList.add(MongoDbUtils.convertUnwindedDocumentToProductPage(entry.getValue()));
+ 			rlMap.put(MongoDbUtils.convertDocumentToProductPage(entry.getKey()), linkageList);
  		}
 
  		// <linked page, list of pages in catalog>
@@ -175,14 +180,14 @@ public class MongoAlignmentDao implements AlignmentDao {
      }
 
  	@Override
- 	public List<Document> getProds(String category, String website1, String website2, String attribute) {
-         MongoCollection<Document> collection = this.database.getCollection("Products");
-         List<Document> prods = new ArrayList<>();
-         Bson cFilter = Filters.eq("category", category);
-         Bson wFilter = Filters.eq("website", website1);
+ 	public List<SourceProductPage> getProds(String category, String website1, String website2, String attribute) {
+         MongoCollection<Document> collection = this.database.getCollection(MongoDbUtils.PRODUCTS_COLLECTION_NAME);
+         List<SourceProductPage> prods = new ArrayList<>();
+         Bson cFilter = Filters.eq(MongoDbUtils.CATEGORY, category);
+         Bson wFilter = Filters.eq(MongoDbUtils.WEBSITE, website1);
          Pattern regex = Pattern.compile(".*" + website2.replace(".", "\\.") + ".*", Pattern.CASE_INSENSITIVE);
-         Bson lFilter = Filters.eq("linkage", regex);
-         Bson aFilter = Filters.exists("spec." + attribute, true);
+         Bson lFilter = Filters.eq(MongoDbUtils.LINKAGE, regex);
+         Bson aFilter = Filters.exists(MongoDbUtils.SPECS+"." + attribute, true);
          Bson andFilter;
 
          List<Bson> filters = new ArrayList<>();
@@ -197,24 +202,22 @@ public class MongoAlignmentDao implements AlignmentDao {
 
          andFilter = Filters.and(filters);
 
-         collection.find(Filters.and(andFilter)).limit(2000).forEach((Document d) -> prods.add(d));
+         collection.find(Filters.and(andFilter)).limit(2000).forEach((Document d) -> prods.add(MongoDbUtils.convertDocumentToProductPage(d)));
 
          return prods;
  	}
 
  	@Override
- 	public List<Document[]> getProdsInRL(List<Document> prods, String website, String attribute) {
+ 	public List<Entry<SourceProductPage, SourceProductPage>> getProdsInRL(List<SourceProductPage> prods, String website, String attribute) {
          Map<String, List<Integer>> rlMap = new HashMap<>();
          List<String> docsToFetch = new ArrayList<>();
-         List<Document> fetchedProducts = new ArrayList<>();
-         List<Document[]> rlList = new ArrayList<>();
+         List<SourceProductPage> fetchedProducts = new ArrayList<>();
+         List<Entry<SourceProductPage, SourceProductPage>> rlList = new ArrayList<>();
 
          // get urls of the linkage products
          for (int i = 0; i < prods.size(); i++) {
-             Document p = prods.get(i);
-             @SuppressWarnings("unchecked")
-             List<String> rlProds = p.get("linkage", List.class);
-             for (String url : rlProds)
+        	 SourceProductPage p = prods.get(i);
+             for (String url : p.getLinkage())
                  if (url.contains(website)) {
                      List<Integer> indexes = rlMap.getOrDefault(url, new ArrayList<Integer>());
                      indexes.add(i);
@@ -224,29 +227,32 @@ public class MongoAlignmentDao implements AlignmentDao {
          }
 
          // get all the linkage products containing the relevant attribute
-         MongoCollection<Document> collection = this.database.getCollection("Products");
-         Bson inFilter = Filters.in("url", docsToFetch);
-         Bson attFilter = Filters.exists("spec." + attribute, true);
+         MongoCollection<Document> collection = this.database.getCollection(MongoDbUtils.PRODUCTS_COLLECTION_NAME);
+         Bson inFilter = Filters.in(MongoDbUtils.URL, docsToFetch);
+         Bson attFilter = Filters.exists(MongoDbUtils.SPECS + "." + attribute, true);
          Bson andFilter = Filters.and(inFilter, attFilter);
-         collection.find(andFilter).projection(Projections.include("spec", "url"))
-                 .forEach((Document d) -> fetchedProducts.add(d));
+         collection.find(andFilter).projection(Projections.include(MongoDbUtils.SPECS, MongoDbUtils.URL))
+                 .forEach((Document d) -> fetchedProducts.add(MongoDbUtils.convertDocumentToProductPage(d)));
 
          // create record linkage list
          fetchedProducts.stream().forEach(d -> {
-             String url = d.getString("url");
-             List<Integer> indexes = rlMap.get(url);
+             List<Integer> indexes = rlMap.get(d.getUrl());
              for (int i : indexes)
-                 rlList.add(new Document[] { prods.get(i), d });
+                 rlList.add(new AbstractMap.SimpleEntry<>( prods.get(i), d ));
          });
-
          return rlList;
  	}
 
  	@Override
- 	public Document getIfValid(String url) {
-         return this.database
-                 .getCollection("Products")
-                 .find(Filters.and(Filters.eq("url", url), Filters.ne("linkage", Collections.EMPTY_LIST),
-                         Filters.ne("spec", new Document()))).first();
+ 	public SourceProductPage getIfValid(String url) {
+         Document firstResult = this.database
+                 .getCollection(MongoDbUtils.PRODUCTS_COLLECTION_NAME)
+                 .find(Filters.and(Filters.eq(MongoDbUtils.URL, url), Filters.ne(MongoDbUtils.LINKAGE, Collections.EMPTY_LIST),
+                         Filters.ne(MongoDbUtils.SPECS, new Document()))).first();
+         SourceProductPage res = null;
+         if (firstResult != null) {
+        	 res = MongoDbUtils.convertDocumentToProductPage(firstResult);
+         }
+         return res;
  	}
 }

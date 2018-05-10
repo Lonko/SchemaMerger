@@ -1,7 +1,6 @@
 package model;
 
 import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Represents a single product page.
@@ -13,19 +12,20 @@ import java.util.Map;
  */
 public abstract class AbstractProductPage {
 	
-	private String category;
-	private Map<String, String> specifications;
+	@SuppressWarnings("serial")
+	public static class Specifications extends HashMap<String, String>{
+		public Specifications() {
+			super();
+		}
+	}
 	
-	public AbstractProductPage(String category) {
-		this.category = category;
-		this.specifications = new HashMap<>();
+	private Specifications specifications;
+	
+	public AbstractProductPage() {
+		this.specifications = new Specifications();
 	}
 
-	public String getCategory() {
-		return category;
-	}
-
-	public Map<String, String> getSpecifications() {
+	public Specifications getSpecifications() {
 		return specifications;
 	}
 	

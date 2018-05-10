@@ -26,6 +26,8 @@ import org.json.simple.parser.ParseException;
 
 import com.cedarsoftware.util.io.JsonWriter;
 
+import model.Source;
+
 public class FileDataConnector {
 
     private static final String DEFAULT_DATASET = "src/main/resources/specifications";
@@ -186,14 +188,14 @@ public class FileDataConnector {
         printCSV(source, match, header);
     }
 
-    public void printClonedSources(String name, Map<String, List<String>> sources) {
+    public void printClonedSources(String name, Map<Source, List<Source>> sources) {
         String header = "Source1,Source2";
         List<String> rows = new ArrayList<>();
 
-        for (String source : sources.keySet()) {
-            List<String> clones = sources.get(source);
-            for (String clone : clones)
-                rows.add(source + "," + clone);
+        for (Source source : sources.keySet()) {
+            List<Source> clones = sources.get(source);
+            for (Source clone : clones)
+                rows.add(source.toString() + "," + clone.toString());
         }
 
         printCSV(name, rows, header);

@@ -410,21 +410,19 @@ public class SourcesGenerator {
         for (CatalogueProductPage prod : products) {
             int realIds = prod.getId();
             List<String> attrs = pAttrs.get(realIds);
+            String url = source + "/" + realIds + "/";
+            SourceProductPage page = new SourceProductPage(this.categories.get(0), url, source);
             
             // linkage and IDs
-            List<String> linkage = new ArrayList<>();
             List<Integer> ids = buildProductIds(rnd, realIds);
+            page.setIds(ids);
             for (Integer id : ids) {
             	for (String rlSource : this.id2Sources.get(id)) {
             		if (!rlSource.equals(source)) {
-                        linkage.add(rlSource + "/" + realIds + "/");
+                        page.getLinkage().add(rlSource + "/" + realIds + "/");
             		}
                 }
             }
-            
-            String url = source + "/" + realIds + "/";
-            SourceProductPage page = new SourceProductPage(this.categories.get(0), 
-            		url, source, linkage, ids);
 
             addSpecsToProductPage(page, prod.getSpecifications(), newValues, attrs);
             prodPages.add(page);

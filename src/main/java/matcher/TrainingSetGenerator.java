@@ -7,11 +7,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
-import org.bson.Document;
-
 import connectors.dao.AlignmentDao;
+import model.Source;
+import model.SourceProductPage;
 import models.matcher.BagsOfWordsManager;
 import models.matcher.Features;
 import models.matcher.Tuple;
@@ -43,7 +44,7 @@ public class TrainingSetGenerator {
         int newSizeP, newSizeN, sizeP = 0, sizeN = 0, tentatives = 0;
 
         do {
-            List<Document> sample = this.dao.getRLSample(sampleSize, category);
+            List<SourceProductPage> sample = this.dao.getRLSample(sampleSize, category);
             Map<String, List<Tuple>> newExamples = getExamples(sample, setSize, ratio);
             newSizeP = newExamples.get("positives").size();
             newSizeN = newExamples.get("negatives").size();
@@ -105,41 +106,29 @@ public class TrainingSetGenerator {
      * @param ratio pos-neg proportion
      * @return
      */
-    private Map<String, List<Tuple>> getExamples(List<Document> sample, int nExamples, double ratio) {
+    private Map<String, List<Tuple>> getExamples(List<SourceProductPage> sample, int nExamples, double ratio) {
         List<Tuple> posExamples = new ArrayList<>();
         List<Tuple> negExamples = new ArrayList<>();
 
-        for (Document doc1 : sample) {
-            @SuppressWarnings("unchecked")
-            List<String> rlUrls = doc1.get("linkage", List.class);
-
-            for (String url : rlUrls) {
-                Document doc2 = this.dao.getIfValid(url);
+        for (SourceProductPage doc1 : sample) {
+            for (String url : doc1.getLinkage()) {
+                SourceProductPage doc2 = this.dao.getIfValid(url);
 
                 if (doc2 != null) {
-                    String website1 = doc1.getString("website");
-                    String website2 = doc2.getString("website");
-                    String category1 = doc1.getString("category");
-                    String category2 = doc2.getString("category");
-                    String source1 = category1 + "###" + website1;
-                    String source2 = category2 + "###" + website2;
 
                     // check if the two pages belong to cloned sources
-                    if (this.clonedSources.containsKey(source1)
-                            && this.clonedSources.get(source1).contains(source2))
-                        continue;
-
-                    if (!website1.equals(website2)) {
-                        Document attributes1 = doc1.get("spec", Document.class);
-                        Document attributes2 = doc2.get("spec", Document.class);
-                        Set<String> aSet1 = attributes1.keySet();
-                        Set<String> aSet2 = attributes2.keySet();
-                        aSet1.retainAll(aSet2);
+                    Source source1 = doc1.getSource();
+                    Source source2 = doc2.getSource();
+					if ((!this.clonedSources.containsKey(source1.toString())
+                            || !this.clonedSources.get(source1.toString()).contains(source2.toString()))
+                    		&& !source1.getWebsite().equals(source2.getWebsite())) {
+                        Set<String> aSet1 = doc1.getSpecifications().keySet();
+                        aSet1.retainAll(doc2.getSpecifications().keySet());
 
                         // generates positive examples
                         List<Tuple> allTmpPosEx = new ArrayList<>();
                         aSet1.stream().forEach(a -> {
-                            Tuple t = new Tuple(a, a, website1, website2, category1);
+                            Tuple t = new Tuple(a, a, doc1.getSource().getWebsite(), doc2.getSource().getWebsite(), doc1.getSource().getCategory());
                             allTmpPosEx.add(t);
                         });
                         Collections.shuffle(allTmpPosEx);
@@ -211,17 +200,17 @@ public class TrainingSetGenerator {
         String attribute1 = t.getAttribute1();
         String attribute2 = t.getAttribute2();
         String category = t.getCategory();
-        List<Document> sList1 = this.dao.getProds(category, website1, website2, attribute1);
+        List<SourceProductPage> sList1 = this.dao.getProds(category, website1, website2, attribute1);
         // List<Document> wList1 = this.dao.getProds("", website1, attribute1);
-        List<Document> cList1 = this.dao.getProds(category, "", website2, attribute1);
+        List<SourceProductPage> cList1 = this.dao.getProds(category, "", website2, attribute1);
 
-        List<Document[]> sList2 = this.dao.getProdsInRL(sList1, website2, attribute2);
+        List<Entry<SourceProductPage, SourceProductPage>> sList2 = this.dao.getProdsInRL(sList1, website2, attribute2);
         // List<Document[]> wList2 = this.dao.getProdsInRL(wList1, website2,
         // attribute2);
-        List<Document[]> cList2 = this.dao.getProdsInRL(cList1, website2, attribute2);
+        List<Entry<SourceProductPage, SourceProductPage>> cList2 = this.dao.getProdsInRL(cList1, website2, attribute2);
 
         try {
-            features = computeFeatures(sList2, new ArrayList<Document[]>(), cList2, attribute1, attribute2,
+            features = computeFeatures(sList2, new ArrayList<Entry<SourceProductPage, SourceProductPage>>(), cList2, attribute1, attribute2,
                     candidateType, useWebsite);
         } catch (ArithmeticException e) {
             System.err.println(t.toString());
@@ -240,7 +229,8 @@ public class TrainingSetGenerator {
         return features;
     }
 
-    private Features computeFeatures(List<Document[]> sList, List<Document[]> wList, List<Document[]> cList,
+    private Features computeFeatures(List<Entry<SourceProductPage, SourceProductPage>> sList, List<Entry<SourceProductPage, SourceProductPage>> wList, 
+    		List<Entry<SourceProductPage, SourceProductPage>> cList,
             String a1, String a2, double type, boolean useWebsite) {
 
         Features features = new Features();

@@ -1,11 +1,14 @@
 package matcher;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -15,6 +18,8 @@ import org.bson.Document;
 
 import connectors.RConnector;
 import connectors.dao.AlignmentDao;
+import model.AbstractProductPage.Specifications;
+import model.SourceProductPage;
 import models.matcher.BagsOfWordsManager;
 import models.matcher.DataFrame;
 import models.matcher.Features;
@@ -65,11 +70,11 @@ public class CategoryMatcher {
         // last website is the one to be matched with the catalog
         String newSource = websites.remove(websites.size() - 1);
         // linked page -> pages in catalog
-        Map<Document, List<Document>> linkageMap = this.dao.getProdsInRL(websites, category);
+        Map<SourceProductPage, List<SourceProductPage>> linkageMap = this.dao.getProdsInRL(websites, category);
         // check if new source is matchable
-        if (checkIfValidSource(newSource, linkageMap.keySet())) {
+        if (checkIfValidWebsite(newSource, linkageMap.keySet())) {
             // pages in catalog(merged) -> linked page
-            List<Document[]> linkedProds = setupCatalog(linkageMap, schemaMatch);
+        	List<Entry<SourceProductPage, SourceProductPage>> linkedProds = setupCatalog(linkageMap, schemaMatch);
 
             // Inverted indexes (attribute name -> indexes of prods)
             InvertedIndexesManager invIndexes = getInvertedIndexes(linkedProds, newSource);
@@ -85,7 +90,7 @@ public class CategoryMatcher {
 
                 matched = true;
             } catch (Exception e) {
-                System.out.println("CON LINKAGE -> " + checkIfValidSource(newSource, linkageMap.keySet()));
+                System.out.println("CON LINKAGE -> " + checkIfValidWebsite(newSource, linkageMap.keySet()));
                 System.out.println("(df di lunghezza : " + dataFrame.getAttrCatalog().size() + ")");
             }
         }
@@ -95,12 +100,12 @@ public class CategoryMatcher {
     }
 
     // check if among the linked pages there's at least one belonging to the new
-    // source
-    boolean checkIfValidSource(String source, Set<Document> linkedPages) {
+    // website
+    boolean checkIfValidWebsite(String website, Set<SourceProductPage> linkedPages) {
         boolean foundSourcePage = false;
 
-        for (Document page : linkedPages) {
-            if (page.getString("url").contains(source)) {
+        for (SourceProductPage page : linkedPages) {
+            if (page.getSource().getWebsite().equals(website)) {
                 foundSourcePage = true;
                 break;
             }
@@ -110,36 +115,37 @@ public class CategoryMatcher {
     }
 
     // update all products pages' attribute names and merges catalog prods in linkageS
-    private List<Document[]> setupCatalog(Map<Document, List<Document>> prods, Schema schema) {
+    private List<Entry<SourceProductPage, SourceProductPage>> setupCatalog(Map<SourceProductPage, List<SourceProductPage>> prods, Schema schema) {
        return setupCatalog(prods, schema, "");
     }
     
-    private List<Document[]> setupCatalog(Map<Document, List<Document>> prods, Schema schema, String reference) {
-        List<Document[]> updatedList = new ArrayList<>();
+    private List<Entry<SourceProductPage, SourceProductPage>> setupCatalog(Map<SourceProductPage, List<SourceProductPage>> prods, Schema schema, String reference) {
+        List<Entry<SourceProductPage, SourceProductPage>> updatedList = new LinkedList<Entry<SourceProductPage,SourceProductPage>>();
 
-        for (Map.Entry<Document, List<Document>> linkage : prods.entrySet()) {
-            Document sourcePage = linkage.getKey();
-            Document catalogPage = mergeProducts(linkage.getValue(), schema, reference);
+        for (Map.Entry<SourceProductPage, List<SourceProductPage>> linkage : prods.entrySet()) {
+        	SourceProductPage sourcePage = linkage.getKey();
+        	SourceProductPage specList = mergeProducts(linkage.getValue(), schema, reference);
             updateSpecs(sourcePage, schema);
-            updatedList.add(new Document[] { catalogPage, sourcePage });
+            updatedList.add(new AbstractMap.SimpleEntry<SourceProductPage, SourceProductPage>(specList,sourcePage));
         }
 
         return updatedList;
     }
 
-    private Document mergeProducts(List<Document> prods, Schema schema, String reference) {
+    private SourceProductPage mergeProducts(List<SourceProductPage> prods, Schema schema, String reference) {
         // update the attribute names according to the existing schema
         prods.forEach(p -> updateSpecs(p, schema));
-        Map<String, Object> newSpecs = new HashMap<>();
+        Specifications newSpecs = new Specifications();
 
-        for (Document p : prods)
-            for (String attr : p.get("spec", Document.class).keySet()) {
+        for (SourceProductPage p : prods)
+            for (Entry<String, String> attr2vlaue : p.getSpecifications().entrySet()) {
                 /* if reference is an empty string add all attributes
                  * if it contains a source name, only add the attributes that can be found in it
                  */
+            	String attr = attr2vlaue.getKey();
                 if(reference.equals("") || attr.contains(reference)){
                     String oldValue = (String) newSpecs.getOrDefault(attr, "");
-                    String newValue = p.get("spec", Document.class).getString(attr);
+                    String newValue = attr2vlaue.getValue();
                     if (oldValue.length() > 0) // there was already a value for that attr
                         newSpecs.put(attr, oldValue + "###" + newValue);
                     else
@@ -147,22 +153,24 @@ public class CategoryMatcher {
                 }
             }
         
-        Document specs = new Document(newSpecs);
-        return new Document("spec", specs);
+        //FIXME spec or sourceProductPage??
+        SourceProductPage spp = new SourceProductPage(null, null, null);
+        spp.getSpecifications().putAll(newSpecs);
+        return spp;
     }
 
     // update attribute names of a single product page
-    private void updateSpecs(Document p, Schema schema) {
-        Document specs = p.get("spec", Document.class);
-        String website = p.getString("website");
-        Document newSpecs = new Document();
+    private void updateSpecs(SourceProductPage p, Schema schema) {
+        Map<String, String> specifications = p.getSpecifications();
+        Map<String, String> newSpecs = new HashMap<>();
+        String website = p.getSource().getWebsite();
         // update attribute names to the format "attribute###website"
-        specs.keySet()
+        specifications.keySet()
                 .forEach(
                         attr -> {
                             if (!attr.contains("###")) {
-                                String value = specs.getString(attr);
-                                newSpecs.append(
+                                String value = specifications.get(attr);
+								newSpecs.put(
                                         schema.getAttributesMap().getOrDefault(attr + "###" + website,
                                                 attr + "###" + website), value);
                             } else 
@@ -170,24 +178,25 @@ public class CategoryMatcher {
                                  * when this happens, its specs get updated twice, but the second time they need 
                                  * to be added without changes.
                                  */
-                                newSpecs.append(attr, specs.getString(attr));
+                                newSpecs.put(attr, specifications.get(attr));
                         });
-        p.put("spec", newSpecs);
+        specifications.clear();
+        specifications.putAll(newSpecs);
     }
 
-    private InvertedIndexesManager getInvertedIndexes(List<Document[]> prods, String website) {
+    private InvertedIndexesManager getInvertedIndexes(List<Entry<SourceProductPage, SourceProductPage>> prods, String website) {
         Map<String, Set<Integer>> invIndCatalog = new HashMap<>();
         Map<String, Set<Integer>> invIndLinked = new HashMap<>();
         Map<String, Set<Integer>> invIndSource = new HashMap<>();
 
         // check all linked product pages
         for (int i = 0; i < prods.size(); i++) {
-            Document[] pair = prods.get(i);
+        	Entry<SourceProductPage, SourceProductPage> pair = prods.get(i);
             // get the attributes present in those 2 pages
-            Set<String> attrsCatalog = pair[0].get("spec", Document.class).keySet();
-            Set<String> attrsLinked = pair[1].get("spec", Document.class).keySet();
+            Set<String> attrsCatalog = pair.getKey().getSpecifications().keySet();
+            Set<String> attrsLinked = pair.getValue().getSpecifications().keySet();
             // check the website of the linked page
-            boolean isInSource = pair[1].getString("website").equals(website);
+            boolean isInSource = pair.getValue().getSource().getWebsite().equals(website);
 
             // add the attributes in the catalog's index
             for (String attrC : attrsCatalog) {
@@ -219,7 +228,7 @@ public class CategoryMatcher {
         return invIndexes;
     }
 
-    private DataFrame computeAttributesFeatures(List<Document[]> linkedProds,
+    private DataFrame computeAttributesFeatures(List<Entry<SourceProductPage, SourceProductPage>> linkedProds,
             InvertedIndexesManager invIndexes, int cardinality, String website,
             Map<String, Integer> attributesLinkage, boolean useMI) {
 
@@ -243,7 +252,7 @@ public class CategoryMatcher {
                 Set<Integer> commonProdsL = new HashSet<>(invIndexes.getLinkedIndex().get(aSource));
                 commonProdsL.retainAll(attrCatalog.getValue());
 
-                List<Document[]> linkageS = new ArrayList<>();
+                List<Entry<SourceProductPage, SourceProductPage>> linkageS = new ArrayList<>();
                 commonProdsS.forEach(i -> linkageS.add(linkedProds.get(i)));
                 // <------>
                 // DA SISTEMARE ORA CHE GLI ATTRIBUTI SONO GESTITI
@@ -255,7 +264,7 @@ public class CategoryMatcher {
                 // if(aSource.equals(aCatalog))
                 // attrSet.add(aSource);
                 // <------>
-                List<Document[]> linkageL = new ArrayList<>();
+                List<Entry<SourceProductPage, SourceProductPage>> linkageL = new ArrayList<>();
                 commonProdsL.forEach(i -> linkageL.add(linkedProds.get(i)));
 
                 attributesLinkage.put(aSource + aCatalog, linkageS.size());
@@ -278,7 +287,7 @@ public class CategoryMatcher {
     // }
     // }
 
-    public Features computeFeatures(List<Document[]> sList, List<Document[]> cList, String a1, String a2,
+    public Features computeFeatures(List<Entry<SourceProductPage, SourceProductPage>> sList, List<Entry<SourceProductPage, SourceProductPage>> cList, String a1, String a2,
             boolean useMI) {
 
         Features features = new Features();

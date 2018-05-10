@@ -18,6 +18,7 @@ import matcher.CategoryMatcher;
 import matcher.DynamicCombinationsCalculator;
 import matcher.FeatureExtractor;
 import matcher.TrainingSetGenerator;
+import model.Source;
 import models.generator.Configurations;
 import models.matcher.EvaluationMetrics;
 import models.matcher.Schema;
@@ -37,12 +38,12 @@ public class DatasetAlignmentAlgorithm {
     private static final boolean ALREADY_TRAINED = true;
     
     /**
-     * List of sources in real dataset, ordered by linkage.
+     * List of websites in real dataset, ordered by linkage.
      * In the dataset we already have a Schemas collection with sources, BUT we don't have the
      * good order.
      */
     // TODO 1 move to configuration 2 COMPUTE this order using dataset
-	private static final List<String> SOURCES_SORTED_REAL_DATASET = Arrays.asList("gosale.com", "price-hunt.com", "shopping.dealtime.com");
+	private static final List<String> WEBSITES_SORTED_REAL_DATASET = Arrays.asList("gosale.com", "price-hunt.com", "shopping.dealtime.com");
 
 	/**
 	 * Se TRUE, gli attributi delle sorgenti che non matchano con nessun attributo
@@ -87,18 +88,16 @@ public class DatasetAlignmentAlgorithm {
      * the couples of sources with schemas that have an overlap of attribute
      * (based on their names) above 50% of the smallest of the two sources.
      */
-    public Map<String, List<String>> findClonedSources(List<String> categories) {
-        Map<String, List<String>> clonedSources = new HashMap<>();
-        Map<String, List<String>> sourceSchemas = this.dao.getSchemas(categories);
+    public Map<Source, List<Source>> findClonedSources(List<String> categories) {
+        Map<Source, List<Source>> clonedSources = new HashMap<>();
+        Map<Source, List<String>> sourceSchemas = this.dao.getSchemas(categories);
 
-        for (String source1 : sourceSchemas.keySet()) {
-            String category1 = source1.split("###")[0];
+        for (Source source1 : sourceSchemas.keySet()) {
             List<String> attributes1 = sourceSchemas.get(source1);
-            for (String source2 : sourceSchemas.keySet()) {
+            for (Source source2 : sourceSchemas.keySet()) {
                 if (source1.equals(source2))
                     continue;
-                String category2 = source2.split("###")[0];
-                if (!category1.equals(category2))
+                if (!source1.getCategory().equals(source2.getCategory()))
                     continue;
                 List<String> attributes2 = sourceSchemas.get(source2);
                 double minSize = (attributes1.size() > attributes2.size()) ? attributes2.size() : attributes1
@@ -106,7 +105,7 @@ public class DatasetAlignmentAlgorithm {
                 Set<String> intersection = new HashSet<>(attributes1);
                 intersection.retainAll(attributes2);
                 if (intersection.size() >= (minSize / 2)) {
-                    List<String> clones = clonedSources.getOrDefault(source1, new ArrayList<>());
+                    List<Source> clones = clonedSources.getOrDefault(source1, new ArrayList<>());
                     clones.add(source2);
                     clonedSources.put(source1, clones);
                 }
@@ -226,7 +225,7 @@ public class DatasetAlignmentAlgorithm {
                                    })
                                    .collect(Collectors.toList());
                 String category = config.getCategories().get(0);
-                List<String> validAttributes = this.dao.getSingleSchema(category, sources.get(0));
+                List<String> validAttributes = this.dao.getSingleSchema(new Source(category, sources.get(0)));
                 sizes.keySet().retainAll(validAttributes);
             }
             EvaluationMetrics evaluateSyntheticResults = evaluateSyntheticResults(clusters, sizes);
@@ -262,7 +261,7 @@ public class DatasetAlignmentAlgorithm {
             // Classification
             System.out.println("INIZIO GENERAZIONE SCHEMA");
             CategoryMatcher cm = new CategoryMatcher(this.dao, r);
-            Schema schema = matchAllSourcesInCategory(SOURCES_SORTED_REAL_DATASET, categories.get(0), cm, 0, true, WITH_REFERENCE);
+            Schema schema = matchAllSourcesInCategory(WEBSITES_SORTED_REAL_DATASET, categories.get(0), cm, 0, true, WITH_REFERENCE);
             fdc.printMatchSchema("clusters", schema);
             System.out.println("FINE GENERAZIONE SCHEMA");
         } finally {

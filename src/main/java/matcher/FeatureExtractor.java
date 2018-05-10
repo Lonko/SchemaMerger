@@ -1,15 +1,16 @@
 package matcher;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
-import org.bson.Document;
-
+import model.SourceProductPage;
 import models.matcher.BagsOfWordsManager;
 
 public class FeatureExtractor {
@@ -77,7 +78,7 @@ public class FeatureExtractor {
     }
 
     // Mutual Information
-    public double getMI(List<Document[]> prods, String a1, String a2) {
+    public double getMI(List<Entry<SourceProductPage, SourceProductPage>> prods, String a1, String a2) {
         double mi = 0.0;
 
         List<List<String>> valueSets = getDistinctValues(prods, a1, a2);
@@ -119,14 +120,14 @@ public class FeatureExtractor {
         return margProb;
     }
 
-    private double[][] getJointProbDistr(List<Document[]> prods, String a1, String a2,
+    private double[][] getJointProbDistr(List<Entry<SourceProductPage, SourceProductPage>> prods, String a1, String a2,
             List<String> distinctValues1, List<String> distinctValues2) {
 
         int n = 0;
         double[][] matrix = new double[distinctValues1.size()][distinctValues2.size()];
-        for (Document[] couple : prods) {
-            String value1 = couple[0].get("spec", Document.class).getString(a1);
-            String value2 = couple[1].get("spec", Document.class).getString(a2);
+        for (Entry<SourceProductPage, SourceProductPage> couple : prods) {
+            String value1 = couple.getKey().getSpecifications().get(a1);
+            String value2 = couple.getValue().getSpecifications().get(a2);
             if (value1 == null || value2 == null) // shouldn't happen anyway
                 continue;
             String[] values = value1.split("###");
@@ -145,14 +146,14 @@ public class FeatureExtractor {
         return matrix;
     }
 
-    private List<List<String>> getDistinctValues(List<Document[]> prods, String a1, String a2) {
+    private List<List<String>> getDistinctValues(List<Entry<SourceProductPage, SourceProductPage>> prods, String a1, String a2) {
         List<List<String>> distValues = new ArrayList<>();
         Set<String> values1 = new HashSet<>();
         Set<String> values2 = new HashSet<>();
 
-        for (Document[] couple : prods) {
-            String[] value1 = couple[0].get("spec", Document.class).getString(a1).split("###");
-            String[] value2 = couple[1].get("spec", Document.class).getString(a2).split("###");
+        for (Entry<SourceProductPage, SourceProductPage> couple : prods) {
+            String[] value1 = couple.getKey().getSpecifications().get(a1).split("###");
+            String[] value2 = couple.getValue().getSpecifications().get(a2).split("###");
             // if(a1.equals("Ethernet:") && a2.equals("Wi-Fi:"))
             // System.out.println(value1+"\t"+value2);
             values1.addAll(Arrays.asList(value1));
@@ -173,27 +174,27 @@ public class FeatureExtractor {
         // Map<String, List<String[]>> sample = cm.getTrainingSet();
         // cm.getTrainingSet();
         FeatureExtractor fe = new FeatureExtractor();
-        List<Document[]> docs = new ArrayList<>();
+        List<Entry<SourceProductPage, SourceProductPage>> docs = new ArrayList<>();
         String a1 = "a1";
         String a2 = "a2";
-        Document d1 = new Document("spec", new Document("a1", "A"));
-        Document d2 = new Document("spec", new Document("a1", "A"));
-        Document d3 = new Document("spec", new Document("a1", "C"));
-        Document d4 = new Document("spec", new Document("a1", "C"));
-        Document d5 = new Document("spec", new Document("a1", "E"));
-        Document d6 = new Document("spec", new Document("a1", "E###F"));
-        Document d7 = new Document("spec", new Document("a2", "A"));
-        Document d8 = new Document("spec", new Document("a2", "B"));
-        Document d9 = new Document("spec", new Document("a2", "C"));
-        Document d10 = new Document("spec", new Document("a2", "D"));
-        Document d11 = new Document("spec", new Document("a2", "E"));
-        Document d12 = new Document("spec", new Document("a2", "F"));
-        docs.add(new Document[] { d1, d7 });
-        docs.add(new Document[] { d2, d8 });
-        docs.add(new Document[] { d3, d9 });
-        docs.add(new Document[] { d4, d10 });
-        docs.add(new Document[] { d5, d11 });
-        docs.add(new Document[] { d6, d12 });
+        SourceProductPage d1 = new SourceProductPage(null,null,null); d1.addAttributeValue("a1", "A");
+        SourceProductPage d2 = new SourceProductPage(null,null,null); d2.addAttributeValue("a1", "A");
+        SourceProductPage d3 = new SourceProductPage(null,null,null); d3.addAttributeValue("a1", "C");
+        SourceProductPage d4 = new SourceProductPage(null,null,null); d4.addAttributeValue("a1", "C");
+        SourceProductPage d5 = new SourceProductPage(null,null,null); d5.addAttributeValue("a1", "E");
+        SourceProductPage d6 = new SourceProductPage(null,null,null); d6.addAttributeValue("a1", "E###F");
+        SourceProductPage d7 = new SourceProductPage(null,null,null); d7.addAttributeValue("a2", "A");
+        SourceProductPage d8 = new SourceProductPage(null,null,null); d8.addAttributeValue("a2", "B");
+        SourceProductPage d9 = new SourceProductPage(null,null,null); d9.addAttributeValue("a2", "C");
+        SourceProductPage d10 = new SourceProductPage(null,null,null); d10.addAttributeValue("a2", "D");
+        SourceProductPage d11 = new SourceProductPage(null,null,null); d11.addAttributeValue("a2", "E");
+        SourceProductPage d12 = new SourceProductPage(null,null,null); d12.addAttributeValue("a2", "F");
+        docs.add(new AbstractMap.SimpleEntry<>( d1, d7 ));
+        docs.add(new AbstractMap.SimpleEntry<>( d2, d8 ));
+        docs.add(new AbstractMap.SimpleEntry<>( d3, d9 ));
+        docs.add(new AbstractMap.SimpleEntry<>( d4, d10 ));
+        docs.add(new AbstractMap.SimpleEntry<>( d5, d11 ));
+        docs.add(new AbstractMap.SimpleEntry<>( d6, d12 ));
         BagsOfWordsManager sBags = new BagsOfWordsManager(a1, a2, docs);
         System.out.println("MI: " + fe.getMI(docs, a1, a2));
         System.out.println("JC: " + fe.getJC(sBags));

@@ -3,8 +3,9 @@ package models.matcher;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map.Entry;
 
-import org.bson.Document;
+import model.SourceProductPage;
 
 public class BagsOfWordsManager {
     private String attributeCatalog;
@@ -12,14 +13,14 @@ public class BagsOfWordsManager {
     private List<String> catalogBagOfWords;
     private List<String> sourceBagOfWords;
 
-    public BagsOfWordsManager(String aCatalog, String aSource, List<Document[]> prods) {
+    public BagsOfWordsManager(String aCatalog, String aSource, List<Entry<SourceProductPage, SourceProductPage>> prods) {
         this.catalogBagOfWords = new ArrayList<>();
         this.sourceBagOfWords = new ArrayList<>();
 
-        for (Document[] couple : prods) {
-            String[] wordsCatalog = couple[0].get("spec", Document.class).getString(aCatalog)
+        for (Entry<SourceProductPage, SourceProductPage> couple : prods) {
+            String[] wordsCatalog = couple.getKey().getSpecifications().get(aCatalog)
                     .split("( |(###))+");
-            String[] wordsSource = couple[1].get("spec", Document.class).getString(aSource)
+            String[] wordsSource = couple.getValue().getSpecifications().get(aSource)
                     .split("( |(###))+");
             catalogBagOfWords.addAll(Arrays.asList(wordsCatalog));
             sourceBagOfWords.addAll(Arrays.asList(wordsSource));

@@ -1,5 +1,6 @@
 package model;
 
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -9,26 +10,26 @@ import java.util.List;
  *
  */
 public class SourceProductPage extends AbstractProductPage {
-	
+		
 	private String url;
-	private String website;
+	private Source source;
 	private List<String> linkage;
 	private List<Integer> ids;
 	
-	public SourceProductPage(String category, String url, String website, List<String> linkage, List<Integer> ids) {
-		super(category);
+	public SourceProductPage(String category, String url, String website) {
+		super();
 		this.url = url;
-		this.website = website;
-		this.linkage = linkage;
-		this.ids = ids;
+		this.source = new Source(category, website);
+		this.linkage = new LinkedList<>();
+		this.ids = new LinkedList<>();
 	}
 
 	public String getUrl() {
 		return url;
 	}
 
-	public String getWebsite() {
-		return website;
+	public Source getSource() {
+		return source;
 	}
 
 	public List<String> getLinkage() {
@@ -38,8 +39,12 @@ public class SourceProductPage extends AbstractProductPage {
 	public List<Integer> getIds() {
 		return ids;
 	}
-	
-	
 
+	public void setIds(List<Integer> ids) {
+		this.ids = ids;
+	}
 
+	public void setLinkage(List<String> listLinkages) {
+		this.linkage = listLinkages;
+	}
 }

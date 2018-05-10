@@ -29,10 +29,6 @@ import model.SourceProductPage;
  */
 public class MongoSyntheticDao implements SyntheticDatasetDao {
 	
-	private static final String SCHEMAS_COLLECTION = "Schemas";
-	private static final String PRODUCTS_COLLECTION_NAME = "Products";
-	private static final String CATALOGUE_COLLECTION_NAME = "Catalogue";
-	
 	private MongoDatabase database;
 		
     public MongoSyntheticDao(MongoDbConnectionFactory mongoConnector) {
@@ -46,7 +42,7 @@ public class MongoSyntheticDao implements SyntheticDatasetDao {
 	@Override
     public void uploadCatalogue(List<CatalogueProductPage> catalogue, boolean delete) {
         if(delete)
-        	this.database.getCollection(CATALOGUE_COLLECTION_NAME).drop();
+        	this.database.getCollection(MongoDbUtils.CATALOGUE_COLLECTION_NAME).drop();
         
         int uploadedProds = 0;
 
@@ -61,7 +57,7 @@ public class MongoSyntheticDao implements SyntheticDatasetDao {
                 Document doc = convertCataloguePageToDocument(catalogue.get(id));
                 batch.add(doc);
             }
-            MongoDbUtils.insertBatch(this.database, batch, CATALOGUE_COLLECTION_NAME);
+            MongoDbUtils.insertBatch(this.database, batch, MongoDbUtils.CATALOGUE_COLLECTION_NAME);
             uploadedProds += size;
         }
     }
@@ -69,22 +65,13 @@ public class MongoSyntheticDao implements SyntheticDatasetDao {
 	private Document convertCataloguePageToDocument(CatalogueProductPage productPage) {
         Document prod = new Document();
         Document specs = new Document();
-        prod.append("id", productPage.getId());
-        prod.append("category", productPage.getCategory());
+        prod.append(MongoDbUtils.ID, productPage.getId());
+        prod.append(MongoDbUtils.CATEGORY, productPage.getCategory());
         for (Entry<String, String> attributeEntry: productPage.getSpecifications().entrySet()) {
         	specs.append(attributeEntry.getKey(), attributeEntry.getValue());
         }
-        prod.append("specs", specs);
+        prod.append(MongoDbUtils.SPECS, specs);
         return prod;
-	}
-	
-	private CatalogueProductPage convertDocumentToCataloguePage(Document doc) {
-		CatalogueProductPage cpp = new CatalogueProductPage(doc.getInteger("id"), doc.getString("category"));
-		Document specs = doc.get("specs", Document.class);
-		for (Entry<String, Object> entry: specs.entrySet()) {
-			cpp.addAttributeValue(entry.getKey(), entry.getValue().toString());
-		}
-        return cpp;
 	}
 	
 	@Override
@@ -98,44 +85,32 @@ public class MongoSyntheticDao implements SyntheticDatasetDao {
             List<Document> batch = new ArrayList<>();
             for (int i = 0; i < size; i++) {
                 int index = uploadedProds + i;
-                Document docToUpload = convertProductPageToDocument(productPages.get(index));
+                Document docToUpload = MongoDbUtils.convertProductPageToDocument(productPages.get(index));
                 batch.add(docToUpload);
             }
-            this.insertBatch(batch, PRODUCTS_COLLECTION_NAME);
+            this.insertBatch(batch, MongoDbUtils.PRODUCTS_COLLECTION_NAME);
             uploadedProds += size;
         }
     }
 	
-    // generates the products' pages for the source
-    private Document convertProductPageToDocument(SourceProductPage sourceProductPage) {
-        Document page = new Document();
-        page.append("category", sourceProductPage.getCategory());
-        page.append("url", sourceProductPage.getUrl());
-        page.append("spec", sourceProductPage.getSpecifications());
-        page.append("linkage", sourceProductPage.getLinkage());
-        page.append("ids", sourceProductPage.getIds());
-        page.append("website", sourceProductPage.getWebsite());
-        return page;
-	}
-
-	@Override
+    @Override
 	public void deleteAllSourceProductPages() {
-		dropCollection(PRODUCTS_COLLECTION_NAME);
+		dropCollection(MongoDbUtils.PRODUCTS_COLLECTION_NAME);
 	}
 
 	@Override
 	public List<CatalogueProductPage> getCatalogueProductsWithIds(List<Integer> ids) {
         List<CatalogueProductPage> products = new ArrayList<>();
-        MongoCollection<Document> collection = this.database.getCollection("Catalogue");
-        collection.find(Filters.in("id", ids)).forEach((Document d) -> products.add(convertDocumentToCataloguePage(d)));
+        MongoCollection<Document> collection = this.database.getCollection(MongoDbUtils.CATALOGUE_COLLECTION_NAME);
+        collection.find(Filters.in(MongoDbUtils.ID, ids)).forEach((Document d) -> products.add(MongoDbUtils.convertDocumentToCataloguePage(d)));
 		return products;
 	}
 
 	@Override
 	public void finalizeSourceUpload() {
-		MongoCollection<Document> productCollection = this.database.getCollection(PRODUCTS_COLLECTION_NAME);
+		MongoCollection<Document> productCollection = this.database.getCollection(MongoDbUtils.PRODUCTS_COLLECTION_NAME);
 		addProductsIndexes(productCollection);
-        dropCollection(SCHEMAS_COLLECTION);
+        dropCollection(MongoDbUtils.SCHEMAS_COLLECTION);
         initializeSchemaCollection();
 	}
 	
@@ -144,28 +119,28 @@ public class MongoSyntheticDao implements SyntheticDatasetDao {
 	// TODO Note that there is a common part above, but it is tricky to factorize
 	
 	private void initializeSchemaCollection() {
-		MongoCollection<Document> schemaCollection = getCollectionWithWriteConcern(SCHEMAS_COLLECTION);
+		MongoCollection<Document> schemaCollection = getCollectionWithWriteConcern(MongoDbUtils.SCHEMAS_COLLECTION);
 		if (schemaCollection.count() == 0) {
-	        MongoCollection<Document> products = this.database.getCollection("Products");
+	        MongoCollection<Document> products = this.database.getCollection(MongoDbUtils.PRODUCTS_COLLECTION_NAME);
 	        Map<String, Set<String>> schemas = new TreeMap<>();
 
-	        products.find().projection(Projections.fields(Projections.include("spec", "website", "category")))
+	        products.find().projection(Projections.fields(Projections.include(MongoDbUtils.SPECS, MongoDbUtils.WEBSITE, MongoDbUtils.CATEGORY)))
 	                .forEach((Document d) -> loadSchema(d, schemas));
 
 	        schemas.entrySet().stream().map(this::schema2Document).forEach(schemaCollection::insertOne);
 
 	        //TODO factorize with addProductsIndexes? just URL more
-	        schemaCollection.createIndex(Indexes.ascending("category"));
-	        schemaCollection.createIndex(Indexes.ascending("website"));
-	        schemaCollection.createIndex(Indexes.ascending("website", "category"));			
+	        schemaCollection.createIndex(Indexes.ascending(MongoDbUtils.CATEGORY));
+	        schemaCollection.createIndex(Indexes.ascending(MongoDbUtils.WEBSITE));
+	        schemaCollection.createIndex(Indexes.ascending(MongoDbUtils.WEBSITE, MongoDbUtils.CATEGORY));			
 		}
 	}
 	
     private void addProductsIndexes(MongoCollection<Document> collection) {
-        collection.createIndex(Indexes.ascending("category"));
-        collection.createIndex(Indexes.ascending("website"));
-        collection.createIndex(Indexes.ascending("website", "category"));
-        collection.createIndex(Indexes.hashed("url"));
+        collection.createIndex(Indexes.ascending(MongoDbUtils.CATEGORY));
+        collection.createIndex(Indexes.ascending(MongoDbUtils.WEBSITE));
+        collection.createIndex(Indexes.ascending(MongoDbUtils.WEBSITE, MongoDbUtils.CATEGORY));
+        collection.createIndex(Indexes.hashed(MongoDbUtils.URL));
     }
     
     private void dropCollection(String name) {
@@ -178,8 +153,8 @@ public class MongoSyntheticDao implements SyntheticDatasetDao {
     }
     
     private void loadSchema(Document d, Map<String, Set<String>> schemas) {
-        String source = d.getString("website") + "___" + d.getString("category");
-        Document spec = d.get("spec", Document.class);
+        String source = d.getString(MongoDbUtils.WEBSITE) + "___" + d.getString(MongoDbUtils.CATEGORY);
+        Document spec = d.get(MongoDbUtils.SPECS, Document.class);
         Set<String> attributes = spec.keySet();
 
         Set<String> schema = schemas.getOrDefault(source, new TreeSet<String>());
@@ -192,7 +167,7 @@ public class MongoSyntheticDao implements SyntheticDatasetDao {
         String website = key[0];
         String category = key[1];
 
-        return new Document("category", category).append("website", website).append("attributes",
+        return new Document(MongoDbUtils.CATEGORY, category).append(MongoDbUtils.WEBSITE, website).append(MongoDbUtils.ATTRIBUTES,
                 sourceSchema.getValue());
     }
 
