@@ -34,7 +34,7 @@ public class Cohordinator {
         fdc.setDatasetPath(config.getDatasetPath());
         fdc.setRlPath(config.getRecordLinkagePath());
         fdc.setTsPath(config.getTrainingSetPath());
-        RConnector r = new RConnector();
+        RConnector r = new RConnector(config.getModelPath());
         System.out.println("FINE SETUP");
         AlignmentDao connector = getDao(config);
         DatasetAlignmentAlgorithm algorithm = new DatasetAlignmentAlgorithm(connector, fdc, r, config);

@@ -1,6 +1,7 @@
 package generator;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,6 +17,7 @@ import models.generator.Configurations;
 import models.generator.ConstantCurveFunction;
 import models.generator.CurveFunction;
 import models.generator.RationalCurveFunction;
+import models.generator.Configurations.RecordLinkageErrorType;
 
 public class SourcesGenerator {
 
@@ -29,6 +31,7 @@ public class SourcesGenerator {
     private double missingLinkage;
     // probability of a wrong linkage url
     private double linkageError;
+    private RecordLinkageErrorType rlErrorType;
     private SyntheticDatasetDao dao;
     private StringGenerator stringGenerator;
     private CurveFunction aExtLinkageCurve;
@@ -80,6 +83,7 @@ public class SourcesGenerator {
         this.differentRepresentation = conf.getDifferentRepresentationChance();
         this.missingLinkage = conf.getMissingLinkageChance();
         this.linkageError = conf.getLinkageErrorChance();
+        this.rlErrorType = conf.getRlErrorType();
         this.categories = conf.getCategories();
 
         if (curveType.equals("0"))
@@ -419,7 +423,7 @@ public class SourcesGenerator {
             for (Integer id : ids) {
             	for (String rlSource : this.id2Sources.get(id)) {
             		if (!rlSource.equals(source)) {
-                        page.getLinkage().add(rlSource + "/" + realIds + "/");
+                        assignLinkageToPage(rnd, id, page, rlSource);
             		}
                 }
             }
@@ -432,12 +436,57 @@ public class SourcesGenerator {
     }
 
     /**
+     * Assign correct linkage to pages, potentially adding error or missing values
+     * 
+     * @param rnd
+     * @param id
+     * @param page
+     * @param rlSource
+     */
+	private void assignLinkageToPage(Random rnd, int id, SourceProductPage page, String rlSource) {
+		//By default the correct linkage should be added to the page
+		boolean setCorrectLinkage;
+		boolean setWrongLinkage;
+
+        /*
+         * linkageCorrectIndex < this.missingLinkage ----> no linkage <p>
+         * this.missingLinkage <= linkageCorrectIndex < this.linkageError ----> wrong  <p>
+         * linkage this.missingLinkage + this.linkageError <= linkageCorrectIndex ----> correct linkage
+         * 
+         * If linkage error is not configured, linkageCorrectIndex is always 1.
+         */
+		double linkageCorrectIndex = 1;
+		if (this.rlErrorType.equals(RecordLinkageErrorType.LINKAGE)) {
+			linkageCorrectIndex = rnd.nextDouble();
+		}
+		setCorrectLinkage = this.missingLinkage + this.linkageError <= linkageCorrectIndex;
+		setWrongLinkage = this.missingLinkage <= linkageCorrectIndex && linkageCorrectIndex < this.linkageError + this.missingLinkage;
+		List<String> pageLinkage = page.getLinkage();
+		
+		if (setCorrectLinkage) {
+			pageLinkage.add(rlSource + "/" + id + "/");
+		}
+		if (setWrongLinkage) {
+            int wrongProdId = rnd.nextInt(this.id2Sources.size());
+            int wrongSourceId = rnd.nextInt(this.id2Sources.get(wrongProdId).size());
+            pageLinkage.add(this.id2Sources.get(wrongProdId).get(wrongSourceId) + "/" + wrongProdId
+                    + "/");			
+		}
+	}
+
+    /**
      * Find IDs of product in dataset, provided its REAL id and estimating linkage errors
      * @param rnd
      * @param id
      * @param linkage
      */
 	private List<Integer> buildProductIds(Random rnd, int realId) {
+		
+		//If the error is not on ID but on Linkage, then we just return the real ID
+		if (!this.rlErrorType.equals(RecordLinkageErrorType.ID)) {
+			return Arrays.asList(realId);
+		}
+		
 		List<Integer> ids = new ArrayList<>();
 		/*
 		 * error < this.missingLinkage => no linkage

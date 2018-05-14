@@ -4,10 +4,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import connectors.dao.AlignmentDao;
@@ -40,28 +41,24 @@ public class TrainingSetGenerator {
             boolean addTuples, double ratio, String category) {
 
         Map<String, List<Tuple>> examples = new HashMap<>();
-        boolean hasEnoughNegatives = false, hasEnoughExamples = false;
+        boolean hasEnoughExamples = false;
         int newSizeP, newSizeN, sizeP = 0, sizeN = 0, tentatives = 0;
 
         do {
             List<SourceProductPage> sample = this.dao.getRLSample(sampleSize, category);
-            Map<String, List<Tuple>> newExamples = getExamples(sample, setSize, ratio);
+            Map<String, List<Tuple>> newExamples = getExamples(sample, ratio);
             newSizeP = newExamples.get("positives").size();
             newSizeN = newExamples.get("negatives").size();
             System.out.println(newSizeP + " + " + newSizeN + " = " + (newSizeP + newSizeN));
             hasEnoughExamples = ((setSize * 0.95) <= (newSizeP + newSizeN))
                     && ((newSizeP + newSizeN) <= (setSize * 1.05));
-            hasEnoughNegatives = (Math.round(100 * (newSizeP / (double) (newSizeP + newSizeN))) / 100.0 == ratio);
             tentatives++;
-            if ((sizeP + sizeN) < (newSizeP + newSizeN) && hasEnoughNegatives) {
+            if ((sizeP + sizeN) < (newSizeP + newSizeN)) {
                 examples = newExamples;
                 sizeP = newSizeP;
                 sizeN = newSizeN;
             }
-            // don't loop too many times
-            if (tentatives == 10)
-                break;
-        } while (!(hasEnoughExamples)); // there must be enough examples
+        } while (!hasEnoughExamples && tentatives < 10); // there must be enough examples, however don't loop too many times
 
         // if not enough examples were found, return an empty list
         if (examples.size() == 0) {
@@ -102,15 +99,15 @@ public class TrainingSetGenerator {
      * Tries to respect pos-neg proportion (ratio) : if it is not respected, try again (max 10 tentatives)
      * 
      * @param sample
-     * @param nExamples
      * @param ratio pos-neg proportion
      * @return
      */
-    private Map<String, List<Tuple>> getExamples(List<SourceProductPage> sample, int nExamples, double ratio) {
+    private Map<String, List<Tuple>> getExamples(List<SourceProductPage> sample, double ratio) {
         List<Tuple> posExamples = new ArrayList<>();
         List<Tuple> negExamples = new ArrayList<>();
 
         for (SourceProductPage doc1 : sample) {
+        	Set<String> schema1 = doc1.getSpecifications().keySet();
             for (String url : doc1.getLinkage()) {
                 SourceProductPage doc2 = this.dao.getIfValid(url);
 
@@ -122,7 +119,7 @@ public class TrainingSetGenerator {
 					if ((!this.clonedSources.containsKey(source1.toString())
                             || !this.clonedSources.get(source1.toString()).contains(source2.toString()))
                     		&& !source1.getWebsite().equals(source2.getWebsite())) {
-                        Set<String> aSet1 = doc1.getSpecifications().keySet();
+						Set<String> aSet1 = new HashSet<>(schema1);
                         aSet1.retainAll(doc2.getSpecifications().keySet());
 
                         // generates positive examples
@@ -154,8 +151,10 @@ public class TrainingSetGenerator {
         negExamples = negExamples.stream().distinct().collect(Collectors.toList());
         Collections.shuffle(posExamples);
         Collections.shuffle(negExamples);
-        int posSize = (int) (posExamples.size() * ratio);
-        int negSize = posExamples.size() - posSize;
+        int posSize = Math.min(posExamples.size(), (int) (negExamples.size() * ratio));
+        int negSize = (int) (posSize / ratio);
+//        int posSize = (int) (posExamples.size() * ratio);
+//        int negSize = posExamples.size() - posSize;
         System.out.println("posExamples size = " + posExamples.size() + " --- posSize = " + posSize
                 + " --- negSize = " + negSize);
         if (posExamples.size() > posSize)

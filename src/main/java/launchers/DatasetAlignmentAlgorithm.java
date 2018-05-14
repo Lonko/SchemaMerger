@@ -31,12 +31,6 @@ import models.matcher.Schema;
  */
 public class DatasetAlignmentAlgorithm {
 	
-	/**
-	 * Define whether the model has already been trained
-	 */
-	//TODO move to configuration/args
-    private static final boolean ALREADY_TRAINED = true;
-    
     /**
      * List of websites in real dataset, ordered by linkage.
      * In the dataset we already have a Schemas collection with sources, BUT we don't have the
@@ -131,6 +125,13 @@ public class DatasetAlignmentAlgorithm {
 
         for (String category : categories) {
             System.out.println(category.toUpperCase());
+			/*
+			 * FIXME: non ha senso avere 2 numeri fissi (300 = quantità di sample, e
+			 * soprattutto 10.000 = numero di esempi attesi), quando il numero di sorgenti,
+			 * attributi ecc sono parametrabili. Bisognerebbe anzi che questi 2 numeri siano
+			 * calcolati in funzione delle altre dimensioni, anche se questo calcolo non è
+			 * semplice da definire
+			 */
             trainingSets.put(category, tsg.getTrainingSetWithTuples(300, 10000, false, true, 0.25, category));
         }
 
@@ -183,9 +184,9 @@ public class DatasetAlignmentAlgorithm {
         List<String> categories = config.getCategories();
         try {
             // Training / model loading
-            if (ALREADY_TRAINED) {
+            if (config.isAlreadyTrained()) {
                 System.out.println("LOADING DEL MODEL");
-                r.loadModel(config.getModelPath());
+                r.loadModel();
                 System.out.println("FINE LOADING DEL MODEL");
             } else {
                 System.out.println("INIZIO GENERAZIONE TRAINING SET");
@@ -193,7 +194,7 @@ public class DatasetAlignmentAlgorithm {
                         new HashMap<String, List<String>>());
                 fdc.printTrainingSet("trainingSet", tSet.get(categories.get(0)));
                 System.out.println("FINE GENERAZIONE TRAINING SET - INIZIO TRAINING");
-                r.train(config.getTrainingSetPath() + "/trainingSet.csv", config.getModelPath());
+                r.train(config.getTrainingSetPath() + "/trainingSet.csv");
                 System.out.println("FINE TRAINING");
             }
 
@@ -243,9 +244,9 @@ public class DatasetAlignmentAlgorithm {
         
         try{
             // Training / model loading
-            if (ALREADY_TRAINED) {
+            if (config.isAlreadyTrained()) {
                 System.out.println("LOADING DEL MODEL");
-                r.loadModel(config.getModelPath());
+                r.loadModel();
                 System.out.println("FINE LOADING DEL MODEL");
             } else {
                 System.out.println("INIZIO GENERAZIONE TRAINING SET");
@@ -255,7 +256,7 @@ public class DatasetAlignmentAlgorithm {
                 Map<String, List<String>> tSet = generateTrainingSets(categories, clonedSources);
                 fdc.printTrainingSet("trainingSet", tSet.get(categories.get(0)));
                 System.out.println("FINE GENERAZIONE TRAINING SET - INIZIO TRAINING");
-                r.train(config.getTrainingSetPath() + "/trainingSet.csv", config.getModelPath());
+                r.train(config.getTrainingSetPath() + "/trainingSet.csv");
                 System.out.println("FINE TRAINING");
             }
             // Classification

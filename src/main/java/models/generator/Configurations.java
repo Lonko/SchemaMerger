@@ -14,6 +14,7 @@ public class Configurations {
     private String databaseName;
     private String modelPath;
     private List<String> categories;
+    private boolean alreadyTrained;
 
     // Parameters for generation of Synthetic Dataset
     private int maxPages;
@@ -34,6 +35,11 @@ public class Configurations {
     private double differentRepresentationChance;
     private double missingLinkageChance;
     private double linkageErrorChance;
+    
+    /** @see Configurations#getRlErrorType() */
+    public enum RecordLinkageErrorType{ID, LINKAGE}
+    
+    private RecordLinkageErrorType rlErrorType;
 
     public Configurations(Properties prop) {
 
@@ -44,6 +50,7 @@ public class Configurations {
         this.databaseName = prop.getProperty("databaseName");
         this.modelPath = prop.getProperty("modelPath");
         this.categories = Arrays.asList(prop.getProperty("categories").split("/"));
+        this.alreadyTrained = Boolean.valueOf(prop.getProperty("alreadyTrained"));
 
         this.maxPages = Integer.valueOf(prop.getProperty("maxPages"));
         this.minPages = Integer.valueOf(prop.getProperty("minPages"));
@@ -58,6 +65,7 @@ public class Configurations {
         this.differentRepresentationChance = Double.valueOf(prop.getProperty("representationChance"));
         this.missingLinkageChance = Double.valueOf(prop.getProperty("missingLinkage"));
         this.linkageErrorChance = Double.valueOf(prop.getProperty("linkageError"));
+        this.rlErrorType = RecordLinkageErrorType.valueOf(prop.getProperty("recordLinkageErrorType", RecordLinkageErrorType.ID.name()));
         loadPercentages(prop);
         String path = prop.getProperty("stringFilePath");
         if (path != null)
@@ -66,7 +74,7 @@ public class Configurations {
     }
 
     public void loadPercentages(Properties prop) {
-        String[] cardClasses = prop.getProperty("carninalityClasses").split("/");
+        String[] cardClasses = prop.getProperty("cardinalityClasses").split("/");
         String[] tokensClasses = prop.getProperty("tokensClasses").split("/");
         String[] cards = prop.getProperty("cardinality").split("/");
         String[] tokens = prop.getProperty("tokens").split("/");
@@ -105,7 +113,20 @@ public class Configurations {
                     + totalTokens);
     }
 
-    public int getMaxPages() {
+	/**
+	 * If true, uses the trained dump found in modelN.rda, otherwise recreate it
+	 * training data.
+	 * <p>
+	 * If data is changed (or configuration of synthetic dataset), training data
+	 * should be recomputed, so put here a FALSE
+	 * 
+	 * @return
+	 */
+    public boolean isAlreadyTrained() {
+		return alreadyTrained;
+	}
+
+	public int getMaxPages() {
         return maxPages;
     }
 
@@ -304,4 +325,17 @@ public class Configurations {
     public void setMaxLinkage(int maxLinkage) {
         this.maxLinkage = maxLinkage;
     }
+
+	/**
+	 * Represents the kind of error the linkage should have: linkage (randomly pick
+	 * a pair of pages in linkage and break them) or ID (randomly remove ids from
+	 * pages), same principle for wrong RL
+	 * 
+	 * @return
+	 */
+	public RecordLinkageErrorType getRlErrorType() {
+		return rlErrorType;
+	}
+    
+    
 }

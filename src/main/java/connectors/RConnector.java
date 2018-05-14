@@ -18,8 +18,14 @@ public class RConnector {
 
     private REngine eng = null;
 	private String modelName;
+	private String modelPath;
+	
 
-    public RConnector() {
+    public RConnector(String modelPath) {
+    	Path modelPathObject = Paths.get(modelPath);
+    	// R creates a variable named after the filename provided. We store it to use it later.
+    	this.modelName = modelPathObject.getFileName().toString().replaceFirst("[.][^.]+$", "");   	
+    	this.modelPath = modelPath;
     }
 
     public void start() {
@@ -53,20 +59,17 @@ public class RConnector {
             this.eng.close();
     }
 
-    public void loadModel(String modelPath) {
+    public void loadModel() {
         // load classifier model
         try {
-        	Path modelPathObject = Paths.get(modelPath);
-        	// R creates a variable named after the filename provided. We store it to use it later.
-        	this.modelName = modelPathObject.getFileName().toString().replaceFirst("[.][^.]+$", "");
-            this.eng.parseAndEval("load('" + System.getProperty("user.dir") + '/' + modelPath + "')");
+            this.eng.parseAndEval("load('" + System.getProperty("user.dir") + '/' + this.modelPath + "')");
         } catch (REngineException | REXPMismatchException e) {
             e.printStackTrace();
         }
     }
 
     // generates classifier model
-    public void train(String tsPath, String modelPath) {
+    public void train(String tsPath) {
         try {
             // read training set
             this.eng.parseAndEval("data <- read.csv(\"" + tsPath + "\",header=TRUE)");
@@ -83,7 +86,7 @@ public class RConnector {
             this.eng.parseAndEval(modelName+" <- train(Match~., data=dataSub, trControl=tc, method=\"glm\","
                     + " family=binomial(link=\"logit\"), metric=\"ROC\")");
             // save model to file to avoid retraining
-            this.eng.parseAndEval("save("+modelName+", file = \"" + modelPath + "\")");
+            this.eng.parseAndEval("save("+this.modelName+", file = \"" + this.modelPath + "\")");
 
         } catch (REngineException | REXPMismatchException e) {
             e.printStackTrace();
