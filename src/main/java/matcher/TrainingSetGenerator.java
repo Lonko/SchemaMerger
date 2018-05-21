@@ -1,6 +1,5 @@
 package matcher;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,6 +11,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import connectors.dao.AlignmentDao;
+import me.tongfei.progressbar.ProgressBar;
 import model.Source;
 import model.SourceProductPage;
 import models.matcher.BagsOfWordsManager;
@@ -70,7 +70,7 @@ public class TrainingSetGenerator {
                 + " coppie di prodotti prese in considerazione per il training set");
         System.out.println(examples.get("positives").size() + "\t" + examples.get("negatives").size());
 
-        List<Features> trainingSet = getTrainingSet(examples.get("positives"), examples.get("negatives"),
+        List<Features> trainingSet = getTrainingSet(examples.get("positives"), examples.get("negatives"),category,
                 useWebsite);
         
         //Training set is computed. Now, adapt it to the format required.
@@ -125,7 +125,7 @@ public class TrainingSetGenerator {
                         // generates positive examples
                         List<Tuple> allTmpPosEx = new ArrayList<>();
                         aSet1.stream().forEach(a -> {
-                            Tuple t = new Tuple(a, a, doc1.getSource().getWebsite(), doc2.getSource().getWebsite(), doc1.getSource().getCategory());
+                            Tuple t = new Tuple(a, a, source1.getWebsite(), source2.getWebsite(), source1.getCategory());
                             allTmpPosEx.add(t);
                         });
                         Collections.shuffle(allTmpPosEx);
@@ -169,64 +169,75 @@ public class TrainingSetGenerator {
         return allExamples;
     }
 
-    public List<Features> getTrainingSet(List<Tuple> pExamples, List<Tuple> nExamples, boolean useWebsite) {
+    public List<Features> getTrainingSet(List<Tuple> pExamples, List<Tuple> nExamples, String category, boolean useWebsite) {
         List<Features> examples = new ArrayList<>();
-        examples.addAll(getAllFeatures(pExamples, 1, useWebsite));
-        examples.addAll(getAllFeatures(nExamples, 0, useWebsite));
+        examples.addAll(getAllFeatures(pExamples, category, 1, useWebsite));
+        examples.addAll(getAllFeatures(nExamples, category, 0, useWebsite));
 
         return examples;
     }
 
-    private List<Features> getAllFeatures(List<Tuple> tuples, double candidateType, boolean useWebsite) {
+    /**
+     * Retrieve all features for tuples<p>
+     * For a given tuple, needs to retrieve pairs OF PROVIDED CATEGORY, of those 2 types:<ul>
+     * <li>[w1, contains(a1)] --[linked with]--> [w2, contains(a2)]
+     * <li>[not(w1), contains(a1)] --[linked with]--> [w2, contains(a2)]
+     * </ul>
+     * Here we try to do it efficiently, limiting the number of call to mongo
+     * @param tuples
+     * @param candidateType
+     * @param useWebsite
+     * @return
+     */
+    private List<Features> getAllFeatures(List<Tuple> tuples, String category, double candidateType, boolean useWebsite) {
         List<Features> features = new ArrayList<>();
-
-        for (int i = 0; i < tuples.size(); i++) {
-            Tuple t = tuples.get(i);
-            float percent = 100 * (i + 1) / (float) tuples.size();
-            String type = (candidateType == 1) ? "positivi" : "negativi";
-            System.out.println("\t\t!!!!!" + percent + "% di " + tuples.size() + " " + type + "!!!!!");
-            features.add(getFeatures(t, candidateType, useWebsite));
-        }
-
+        Map<String, Map<String,Map<String, List<Tuple>>>> a1_s2_a2_tuple = tuples.stream().collect(
+        		Collectors.groupingBy(Tuple::getAttribute1, 
+        		Collectors.groupingBy(Tuple::getWebsite2,
+        		Collectors.groupingBy(Tuple::getAttribute2))));
+        
+//        try(ProgressBar pb = new ProgressBar("Retrieve features for tuple...", tuples.size())){
+			for (Entry<String, Map<String, Map<String, List<Tuple>>>> a1_s2_a2_tuple_entry : a1_s2_a2_tuple.entrySet()) {
+				System.out.println("Dealing with attribute " + a1_s2_a2_tuple_entry.getKey());
+				Map<String, Map<String, List<Tuple>>> s2_a2_tuple = a1_s2_a2_tuple_entry.getValue();
+				for (Entry<String, Map<String, List<Tuple>>> s2_a2_tuple_entry : s2_a2_tuple.entrySet()) {
+					List<SourceProductPage> subProds = this.dao.getProds(category, "",
+							s2_a2_tuple_entry.getKey(), a1_s2_a2_tuple_entry.getKey());
+					Map<String, List<SourceProductPage>> w1_subProds = subProds.stream()
+							.collect(Collectors.groupingBy(prodPage -> prodPage.getSource().getWebsite()));
+					for (Entry<String, List<Tuple>> a2_tuple : s2_a2_tuple_entry.getValue().entrySet()) {
+						getFeatures(candidateType, useWebsite, features, null, a1_s2_a2_tuple_entry.getKey(), s2_a2_tuple_entry.getKey(),
+								subProds, w1_subProds, a2_tuple);
+					}
+				}
+			}
+//        }
         return features;
     }
 
-    private Features getFeatures(Tuple t, double candidateType, boolean useWebsite) {
-        Features features = new Features();
-
-        String website1 = t.getSchema1();
-        String website2 = t.getSchema2();
-        String attribute1 = t.getAttribute1();
-        String attribute2 = t.getAttribute2();
-        String category = t.getCategory();
-        List<SourceProductPage> sList1 = this.dao.getProds(category, website1, website2, attribute1);
-        // List<Document> wList1 = this.dao.getProds("", website1, attribute1);
-        List<SourceProductPage> cList1 = this.dao.getProds(category, "", website2, attribute1);
-
-        List<Entry<SourceProductPage, SourceProductPage>> sList2 = this.dao.getProdsInRL(sList1, website2, attribute2);
-        // List<Document[]> wList2 = this.dao.getProdsInRL(wList1, website2,
-        // attribute2);
-        List<Entry<SourceProductPage, SourceProductPage>> cList2 = this.dao.getProdsInRL(cList1, website2, attribute2);
-
-        try {
-            features = computeFeatures(sList2, new ArrayList<Entry<SourceProductPage, SourceProductPage>>(), cList2, attribute1, attribute2,
-                    candidateType, useWebsite);
-        } catch (ArithmeticException e) {
-            System.err.println(t.toString());
-            try {
-                System.in.read();
-            } catch (IOException e1) {
-                e1.printStackTrace();
-            }
-        }
-
-        System.out.println(sList1.size() + "-->" + sList2.size());
-        // System.out.println(wList1.size()+"-->"+wList2.size());
-        System.out.println(cList1.size() + "-->" + cList2.size());
-        System.out.println(features.toString());
-
-        return features;
-    }
+	private void getFeatures(double candidateType, boolean useWebsite, List<Features> features, ProgressBar pb,
+			String attribute1, String website2, List<SourceProductPage> subProds,
+			Map<String, List<SourceProductPage>> w1_subProds, Entry<String, List<Tuple>> a2_tuple) {
+		//Here we deal with tuple for a specific a1, a2 and w2, and all possible W1s.
+		List<Entry<SourceProductPage, SourceProductPage>> cList2 = this.dao
+				.getProdsInRL(subProds, website2, a2_tuple.getKey());
+		List<String> websites1 = a2_tuple.getValue().stream().map(t -> t.getWebsite1())
+				.distinct().collect(Collectors.toList());
+		for (String website1: websites1) {
+//			pb.step();
+			Features feature = new Features();
+			List<SourceProductPage> subProds_of_w1 = w1_subProds.getOrDefault(website1, new ArrayList<>());
+			List<Entry<SourceProductPage, SourceProductPage>> sList2 = this.dao.getProdsInRL(subProds_of_w1,
+					website2, a2_tuple.getKey());
+			try {
+				feature = computeFeatures(sList2, new ArrayList<Entry<SourceProductPage, SourceProductPage>>(),
+						cList2, attribute1, a2_tuple.getKey(), candidateType, useWebsite);
+				features.add(feature);
+			} catch (Exception e) {
+				System.err.println("Warning: for attributes "+attribute1+ ", "+a2_tuple.getKey()+", "+e.getMessage());
+			}
+		}
+	}
 
     private Features computeFeatures(List<Entry<SourceProductPage, SourceProductPage>> sList, List<Entry<SourceProductPage, SourceProductPage>> wList, 
     		List<Entry<SourceProductPage, SourceProductPage>> cList,
@@ -241,21 +252,9 @@ public class TrainingSetGenerator {
         features.setCategoryJSD(this.fe.getJSD(cBags));
         features.setSourceJC(this.fe.getJC(sBags));
         features.setCategoryJC(this.fe.getJC(cBags));
-        try {
-            features.setSourceMI(this.fe.getMI(sList, a1, a2));
-            features.setCategoryMI(this.fe.getMI(cList, a1, a2));
-        } catch (Exception e) {
-        	//FIXME !!!!!!!
-            // System.out.println("DIMENSIONI S: "+sList.size());
-            // for(Document[] d: sList){
-            // System.out.println(d[0].getString(a1)+"\t"+ d[1].getString(a2));
-            // }
-            //
-            // System.out.println("DIMENSIONI C: "+sList.size());
-            // for(Document[] d: cList){
-            // System.out.println(d[0].getString(a1)+"\t"+ d[1].getString(a2));
-            // }
-        }
+        features.setSourceMI(this.fe.getMI(sList, a1, a2));
+        features.setCategoryMI(this.fe.getMI(cList, a1, a2));
+
         if (useWebsite) {
             features.setWebsiteJSD(this.fe.getJSD(wBags));
             features.setWebsiteJC(this.fe.getJC(wBags));

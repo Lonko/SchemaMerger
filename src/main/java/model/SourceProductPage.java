@@ -47,4 +47,14 @@ public class SourceProductPage extends AbstractProductPage {
 	public void setLinkage(List<String> listLinkages) {
 		this.linkage = listLinkages;
 	}
+
+	@Override
+	public String toString() {
+		final int maxLen = 10;
+		return "SourceProductPage [url=" + url + ", source=" + source + ", linkage="
+				+ (linkage != null ? linkage.subList(0, Math.min(linkage.size(), maxLen)) : null) + ", ids="
+				+ (ids != null ? ids.subList(0, Math.min(ids.size(), maxLen)) : null) + ", toString()="
+				+ super.toString() + "]";
+	}
+	
 }
