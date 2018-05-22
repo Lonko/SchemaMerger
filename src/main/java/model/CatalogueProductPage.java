@@ -7,10 +7,10 @@ package model;
  *
  */
 public class CatalogueProductPage extends AbstractProductPage {
-	
+
 	private int id;
 	private String category;
-	
+
 	public CatalogueProductPage(int id, String category) {
 		super();
 		this.id = id;
@@ -22,5 +22,5 @@ public class CatalogueProductPage extends AbstractProductPage {
 
 	public String getCategory() {
 		return category;
-	}	
+	}
 }

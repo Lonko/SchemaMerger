@@ -50,17 +50,23 @@ public interface AlignmentDao {
 	public Map<SourceProductPage, List<SourceProductPage>> getProdsInRL(List<String> websites, String category);
 
 	/**
-	 * Return product pages that match given filters.If a parameter is not provided (empty string), that filter won't be applied  
+	 * Return product pages that match given filters.If a parameter is not provided
+	 * (empty string), that filter won't be applied
 	 * 
-	 * @param category category of product page
-	 * @param website1 website of product page
-	 * @param website2 the PP should be linked with at least a page of that website
-	 * @param attribute1 the PP should provide that attribute
+	 * @param category
+	 *            category of product page
+	 * @param website1
+	 *            website of product page
+	 * @param website2
+	 *            the PP should be linked with at least a page of that website
+	 * @param attribute1
+	 *            the PP should provide that attribute
 	 * @return
 	 */
 	public List<SourceProductPage> getProds(String category, String website1, String website2, String attribute1);
 
-	public List<Entry<SourceProductPage, SourceProductPage>> getProdsInRL(List<SourceProductPage> cList1, String website2, String attribute2);
+	public List<Entry<SourceProductPage, SourceProductPage>> getProdsInRL(List<SourceProductPage> cList1,
+			String website2, String attribute2);
 
 	public SourceProductPage getIfValid(String url);
 }

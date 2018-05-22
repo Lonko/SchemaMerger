@@ -2,14 +2,15 @@ package model;
 
 /**
  * A source of data (website + category)
+ * 
  * @author federico
  *
  */
 public class Source {
-	
+
 	private String category;
 	private String website;
-	
+
 	public Source(String category, String website) {
 		super();
 		this.category = category;
@@ -54,14 +55,9 @@ public class Source {
 			return false;
 		return true;
 	}
-	
+
 	@Override
-	public String toString(){
+	public String toString() {
 		return this.category + "###" + this.website;
 	}
-	
-	
-	
-	
-
 }

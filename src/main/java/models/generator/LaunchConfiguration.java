@@ -15,15 +15,15 @@ import org.apache.commons.lang3.StringUtils;
 public enum LaunchConfiguration {
 
 	/**
-	 * Generate full dataset 
+	 * Generate full dataset
 	 */
 	PROD("src/main/resources/config_prod.properties"),
-	
+
 	/**
 	 * Used to test, in particular it produces a little dataset
 	 */
-	TEST("src/main/resources/config_test.properties"), 
-	
+	TEST("src/main/resources/config_test.properties"),
+
 	/**
 	 * Customizable file that is ignored in git
 	 */
@@ -62,10 +62,10 @@ public enum LaunchConfiguration {
 	 */
 	public static void main(String[] args) {
 		System.out.println(getConfigurationFromArgs(new String[] { "PROD" }).toString());
-		System.out.println(getConfigurationFromArgs(new String[] {"TEST" }).toString());
-		System.out.println(getConfigurationFromArgs(new String[] {"CUSTOM", "opop" }).toString());
-		System.out.println(getConfigurationFromArgs(new String[] {""}).toString());
+		System.out.println(getConfigurationFromArgs(new String[] { "TEST" }).toString());
+		System.out.println(getConfigurationFromArgs(new String[] { "CUSTOM", "opop" }).toString());
+		System.out.println(getConfigurationFromArgs(new String[] { "" }).toString());
 		System.out.println(getConfigurationFromArgs(new String[] {}).toString());
-		System.out.println(getConfigurationFromArgs(new String[] {"fgsdfgdf" }).toString());
+		System.out.println(getConfigurationFromArgs(new String[] { "fgsdfgdf" }).toString());
 	}
 }

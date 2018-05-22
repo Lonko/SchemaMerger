@@ -2,9 +2,9 @@ package generator;
 
 public interface StringGenerator {
 
-    public String generateSourceName();
+	public String generateSourceName();
 
-    public String generateAttributeName();
+	public String generateAttributeName();
 
-    public String generateAttributeToken();
+	public String generateAttributeToken();
 }

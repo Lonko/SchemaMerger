@@ -8,55 +8,54 @@ import java.util.Map.Entry;
 import model.SourceProductPage;
 
 public class BagsOfWordsManager {
-    private String attributeCatalog;
-    private String attributeSource;
-    private List<String> catalogBagOfWords;
-    private List<String> sourceBagOfWords;
+	private String attributeCatalog;
+	private String attributeSource;
+	private List<String> catalogBagOfWords;
+	private List<String> sourceBagOfWords;
 
-    public BagsOfWordsManager(String aCatalog, String aSource, List<Entry<SourceProductPage, SourceProductPage>> prods) {
-        this.catalogBagOfWords = new ArrayList<>();
-        this.sourceBagOfWords = new ArrayList<>();
+	public BagsOfWordsManager(String aCatalog, String aSource,
+			List<Entry<SourceProductPage, SourceProductPage>> prods) {
+		this.catalogBagOfWords = new ArrayList<>();
+		this.sourceBagOfWords = new ArrayList<>();
 
-        for (Entry<SourceProductPage, SourceProductPage> couple : prods) {
-            String[] wordsCatalog = couple.getKey().getSpecifications().get(aCatalog)
-                    .split("( |(###))+");
-            String[] wordsSource = couple.getValue().getSpecifications().get(aSource)
-                    .split("( |(###))+");
-            catalogBagOfWords.addAll(Arrays.asList(wordsCatalog));
-            sourceBagOfWords.addAll(Arrays.asList(wordsSource));
-        }
-    }
+		for (Entry<SourceProductPage, SourceProductPage> couple : prods) {
+			String[] wordsCatalog = couple.getKey().getSpecifications().get(aCatalog).split("( |(###))+");
+			String[] wordsSource = couple.getValue().getSpecifications().get(aSource).split("( |(###))+");
+			catalogBagOfWords.addAll(Arrays.asList(wordsCatalog));
+			sourceBagOfWords.addAll(Arrays.asList(wordsSource));
+		}
+	}
 
-    public String getAttributeCatalog() {
-        return attributeCatalog;
-    }
+	public String getAttributeCatalog() {
+		return attributeCatalog;
+	}
 
-    public void setAttributeCatalog(String attributeCatalog) {
-        this.attributeCatalog = attributeCatalog;
-    }
+	public void setAttributeCatalog(String attributeCatalog) {
+		this.attributeCatalog = attributeCatalog;
+	}
 
-    public String getAttributeSource() {
-        return attributeSource;
-    }
+	public String getAttributeSource() {
+		return attributeSource;
+	}
 
-    public void setAttributeSource(String attributeSource) {
-        this.attributeSource = attributeSource;
-    }
+	public void setAttributeSource(String attributeSource) {
+		this.attributeSource = attributeSource;
+	}
 
-    public List<String> getCatalogBagOfWords() {
-        return catalogBagOfWords;
-    }
+	public List<String> getCatalogBagOfWords() {
+		return catalogBagOfWords;
+	}
 
-    public void setCatalogBagOfWords(List<String> bagOfWordsCatalog) {
-        this.catalogBagOfWords = bagOfWordsCatalog;
-    }
+	public void setCatalogBagOfWords(List<String> bagOfWordsCatalog) {
+		this.catalogBagOfWords = bagOfWordsCatalog;
+	}
 
-    public List<String> getSourceBagOfWords() {
-        return sourceBagOfWords;
-    }
+	public List<String> getSourceBagOfWords() {
+		return sourceBagOfWords;
+	}
 
-    public void setSourceBagOfWords(List<String> bagOfWordsSource) {
-        this.sourceBagOfWords = bagOfWordsSource;
-    }
+	public void setSourceBagOfWords(List<String> bagOfWordsSource) {
+		this.sourceBagOfWords = bagOfWordsSource;
+	}
 
 }

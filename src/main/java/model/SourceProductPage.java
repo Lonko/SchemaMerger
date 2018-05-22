@@ -10,12 +10,12 @@ import java.util.List;
  *
  */
 public class SourceProductPage extends AbstractProductPage {
-		
+
 	private String url;
 	private Source source;
 	private List<String> linkage;
 	private List<Integer> ids;
-	
+
 	public SourceProductPage(String category, String url, String website) {
 		super();
 		this.url = url;
@@ -56,5 +56,5 @@ public class SourceProductPage extends AbstractProductPage {
 				+ (ids != null ? ids.subList(0, Math.min(ids.size(), maxLen)) : null) + ", toString()="
 				+ super.toString() + "]";
 	}
-	
+
 }

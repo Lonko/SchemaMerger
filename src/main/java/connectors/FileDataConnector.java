@@ -30,289 +30,289 @@ import model.Source;
 
 public class FileDataConnector {
 
-    private static final String DEFAULT_DATASET = "src/main/resources/specifications";
-    private static final String DEFAULT_RL = "src/main/resources/id2category2urls.json";
-    private static final String DEFAULT_TS_FOLDER = "src/main/resources/classification";
-    private String configPath;
-    private String datasetPath;
-    private String rlPath;
-    private String tsPath;
- 
-    /**
-     * Specify config file
-     * @param config
-     */
-    public FileDataConnector(String config) {
-        this(DEFAULT_DATASET, DEFAULT_RL, DEFAULT_TS_FOLDER, config);
-    }    
+	private static final String DEFAULT_DATASET = "src/main/resources/specifications";
+	private static final String DEFAULT_RL = "src/main/resources/id2category2urls.json";
+	private static final String DEFAULT_TS_FOLDER = "src/main/resources/classification";
+	private String configPath;
+	private String datasetPath;
+	private String rlPath;
+	private String tsPath;
 
-    public FileDataConnector(String dataset, String rl, String ts, String config) {
-        this.configPath = config;
-        this.datasetPath = dataset;
-        this.rlPath = rl;
-        this.tsPath = ts;
-    }
+	/**
+	 * Specify config file
+	 * 
+	 * @param config
+	 */
+	public FileDataConnector(String config) {
+		this(DEFAULT_DATASET, DEFAULT_RL, DEFAULT_TS_FOLDER, config);
+	}
 
-    public Map<String, String> getAllWebsites() {
-        File[] directories = new File(this.datasetPath).listFiles(File::isDirectory);
-        Map<String, String> websites = new TreeMap<>();
+	public FileDataConnector(String dataset, String rl, String ts, String config) {
+		this.configPath = config;
+		this.datasetPath = dataset;
+		this.rlPath = rl;
+		this.tsPath = ts;
+	}
 
-        for (File dir : directories)
-            websites.put(dir.getName(), dir.getAbsolutePath());
+	public Map<String, String> getAllWebsites() {
+		File[] directories = new File(this.datasetPath).listFiles(File::isDirectory);
+		Map<String, String> websites = new TreeMap<>();
 
-        return websites;
-    }
+		for (File dir : directories)
+			websites.put(dir.getName(), dir.getAbsolutePath());
 
-    public List<File> getWebsiteCategories(String path) {
-        File[] sources = new File(path).listFiles(File::isFile);
-        return Arrays.asList(sources);
-    }
+		return websites;
+	}
 
-    public JSONArray readSource(String path) {
-        return readJSONArray(path);
-    }
+	public List<File> getWebsiteCategories(String path) {
+		File[] sources = new File(path).listFiles(File::isFile);
+		return Arrays.asList(sources);
+	}
 
-    public JSONObject readRecordLinkage() {
-        return ((JSONObject) readJSONArray(this.rlPath).get(0));
-    }
+	public JSONArray readSource(String path) {
+		return readJSONArray(path);
+	}
 
-    public Map<String, List<String>> readClonedSources(String path) {
-        Scanner inputStream = null;
-        File f = new File(path);
-        Map<String, List<String>> clonedSources = new HashMap<>();
+	public JSONObject readRecordLinkage() {
+		return ((JSONObject) readJSONArray(this.rlPath).get(0));
+	}
 
-        try {
-            inputStream = new Scanner(f);
-            // skip header
-            if (inputStream.hasNext())
-                inputStream.next();
-            // read rows
-            while (inputStream.hasNext()) {
-                String line = inputStream.next();
-                String[] sources = line.split(",");
-                List<String> clones = clonedSources.getOrDefault(sources[0], new ArrayList<>());
-                clones.add(sources[1]);
-                clonedSources.put(sources[0], clones);
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } finally {
-            if (inputStream != null)
-                inputStream.close();
-        }
+	public Map<String, List<String>> readClonedSources(String path) {
+		Scanner inputStream = null;
+		File f = new File(path);
+		Map<String, List<String>> clonedSources = new HashMap<>();
 
-        return clonedSources;
-    }
+		try {
+			inputStream = new Scanner(f);
+			// skip header
+			if (inputStream.hasNext())
+				inputStream.next();
+			// read rows
+			while (inputStream.hasNext()) {
+				String line = inputStream.next();
+				String[] sources = line.split(",");
+				List<String> clones = clonedSources.getOrDefault(sources[0], new ArrayList<>());
+				clones.add(sources[1]);
+				clonedSources.put(sources[0], clones);
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} finally {
+			if (inputStream != null)
+				inputStream.close();
+		}
 
-    public double[][] readTrainingSet(String tsName) {
-        Scanner inputStream = null;
-        File tsFile = new File(this.tsPath + "/" + tsName + ".csv");
-        List<double[]> trainingSet = new ArrayList<>();
+		return clonedSources;
+	}
 
-        try {
-            inputStream = new Scanner(tsFile);
-            // skip header
-            if (inputStream.hasNext())
-                inputStream.next();
-            // read rows
-            while (inputStream.hasNext()) {
-                String line = inputStream.next();
-                String[] values = line.split(",");
-                double[] row = new double[10];
-                for (int i = 0; i < 10; i++)
-                    row[i] = Double.valueOf(values[i]);
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } finally {
-            if (inputStream != null)
-                inputStream.close();
-        }
+	public double[][] readTrainingSet(String tsName) {
+		Scanner inputStream = null;
+		File tsFile = new File(this.tsPath + "/" + tsName + ".csv");
+		List<double[]> trainingSet = new ArrayList<>();
 
-        return trainingSet.toArray(new double[][] {});
-    }
+		try {
+			inputStream = new Scanner(tsFile);
+			// skip header
+			if (inputStream.hasNext())
+				inputStream.next();
+			// read rows
+			while (inputStream.hasNext()) {
+				String line = inputStream.next();
+				String[] values = line.split(",");
+				double[] row = new double[10];
+				for (int i = 0; i < 10; i++)
+					row[i] = Double.valueOf(values[i]);
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} finally {
+			if (inputStream != null)
+				inputStream.close();
+		}
 
-    public Properties readConfig() {
-        Properties prop = new Properties();
-        InputStream input = null;
+		return trainingSet.toArray(new double[][] {});
+	}
 
-        try {
-            input = new FileInputStream(this.configPath);
-            prop.load(input);
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } finally {
-            if (input != null) {
-                try {
-                    input.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
+	public Properties readConfig() {
+		Properties prop = new Properties();
+		InputStream input = null;
 
-        return prop;
-    }
+		try {
+			input = new FileInputStream(this.configPath);
+			prop.load(input);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally {
+			if (input != null) {
+				try {
+					input.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
 
-    public void printTrainingSet(String tsName, double[][] trainingSet) {
-        String header = "JSDs,JSDw,JSDc,JCs,JCw,JCc,MIs,MIw,MIc,Match";
-        List<String> lines = new ArrayList<>();
+		return prop;
+	}
 
-        for (double[] row : trainingSet) {
-            String line = Arrays.stream(row).mapToObj(String::valueOf).collect(Collectors.joining(","));
-            lines.add(line);
-        }
+	public void printTrainingSet(String tsName, double[][] trainingSet) {
+		String header = "JSDs,JSDw,JSDc,JCs,JCw,JCc,MIs,MIw,MIc,Match";
+		List<String> lines = new ArrayList<>();
 
-        printCSV(tsName, lines, header);
-    }
+		for (double[] row : trainingSet) {
+			String line = Arrays.stream(row).mapToObj(String::valueOf).collect(Collectors.joining(","));
+			lines.add(line);
+		}
 
-    public void printAllTrainingSets(Map<String, List<String>> trainingSets) {
-        for (String cat : trainingSets.keySet())
-            printTrainingSet("1" + cat + "_ts", trainingSets.get(cat));
-    }
+		printCSV(tsName, lines, header);
+	}
 
-    public void printTrainingSet(String tsName, List<String> trainingSet) {
-        String header = "Attribute1,Attribute2,Website1,Website2,Category,"
-                + "JSDs,JSDw,JSDc,JCs,JCw,JCc,MIs,MIw,MIc,Match";
-        printCSV(tsName, trainingSet, header);
-    }
+	public void printAllTrainingSets(Map<String, List<String>> trainingSets) {
+		for (String cat : trainingSets.keySet())
+			printTrainingSet("1" + cat + "_ts", trainingSets.get(cat));
+	}
 
-    public void printDataFrame(String dfName, List<String> dataFrame) {
-        String header = "AttributeSource,AttributeCatalog,JSDs,JSDw,JSDc,JCs,JCw,JCc,MIs,MIw,MIc,Match";
-        printCSV(dfName, dataFrame, header);
-    }
+	public void printTrainingSet(String tsName, List<String> trainingSet) {
+		String header = "Attribute1,Attribute2,Website1,Website2,Category,"
+				+ "JSDs,JSDw,JSDc,JCs,JCw,JCc,MIs,MIw,MIc,Match";
+		printCSV(tsName, trainingSet, header);
+	}
 
-    public void printMatch(String source, List<String> match) {
-        String header = "AttributeSource,AttributeCatalog,Match";
-        printCSV(source, match, header);
-    }
+	public void printDataFrame(String dfName, List<String> dataFrame) {
+		String header = "AttributeSource,AttributeCatalog,JSDs,JSDw,JSDc,JCs,JCw,JCc,MIs,MIw,MIc,Match";
+		printCSV(dfName, dataFrame, header);
+	}
 
-    public void printClonedSources(String name, Map<Source, List<Source>> sources) {
-        String header = "Source1,Source2";
-        List<String> rows = new ArrayList<>();
+	public void printMatch(String source, List<String> match) {
+		String header = "AttributeSource,AttributeCatalog,Match";
+		printCSV(source, match, header);
+	}
 
-        for (Source source : sources.keySet()) {
-            List<Source> clones = sources.get(source);
-            for (Source clone : clones)
-                rows.add(source.toString() + "," + clone.toString());
-        }
+	public void printClonedSources(String name, Map<Source, List<Source>> sources) {
+		String header = "Source1,Source2";
+		List<String> rows = new ArrayList<>();
 
-        printCSV(name, rows, header);
-    }
+		for (Source source : sources.keySet()) {
+			List<Source> clones = sources.get(source);
+			for (Source clone : clones)
+				rows.add(source.toString() + "," + clone.toString());
+		}
 
-    /**
-     * prints attributes' clusters, from Schema.
-     * @param name
-     * @param schema
-     */
-    public void printMatchSchema(String name, Schema schema) {
-        PrintWriter writer = null;
-        JSONObject json = new JSONObject();
-        int clusterID = 0;
+		printCSV(name, rows, header);
+	}
 
-        try {
-            writer = new PrintWriter(new File(this.tsPath + "/" + name + ".json"));
+	/**
+	 * prints attributes' clusters, from Schema.
+	 * 
+	 * @param name
+	 * @param schema
+	 */
+	public void printMatchSchema(String name, Schema schema) {
+		PrintWriter writer = null;
+		JSONObject json = new JSONObject();
+		int clusterID = 0;
 
-            for (List<String> cluster : schema.schema2Clusters()) {
-                JSONArray jsonCluster = new JSONArray();
-                jsonCluster.addAll(cluster);
-                json.put(clusterID, jsonCluster);
-                clusterID++;
-            }
+		try {
+			writer = new PrintWriter(new File(this.tsPath + "/" + name + ".json"));
 
-            String jsonToPrint = JsonWriter.formatJson(json.toJSONString());
-            writer.print(jsonToPrint);
+			for (List<String> cluster : schema.schema2Clusters()) {
+				JSONArray jsonCluster = new JSONArray();
+				jsonCluster.addAll(cluster);
+				json.put(clusterID, jsonCluster);
+				clusterID++;
+			}
 
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (writer != null)
-                writer.close();
-        }
-    }
+			String jsonToPrint = JsonWriter.formatJson(json.toJSONString());
+			writer.print(jsonToPrint);
 
-    /*
-     * Not used
-     * 
-     * 
-     * public void printSyntheticDatasetLinkage(Map<String, Integer>
-     * linkageInfo){ String header = "Attribute,Linkage"; List<String> csvRows =
-     * new ArrayList<>();
-     * 
-     * for(String attribute : linkageInfo.keySet()){ int linkage =
-     * linkageInfo.get(attribute); csvRows.add(attribute+","+linkage); }
-     * 
-     * printCSV("attribute_linkage.csv", csvRows, header); }
-     * 
-     * public Map<String, Integer> readSyntheticDatasetLinkage(){ Scanner
-     * inputStream = null; String path = this.tsPath+"/attribute_linkage.csv";
-     * File linkageFile = new File(path); Map<String, Integer> linkage = new
-     * HashMap<>();
-     * 
-     * try{ inputStream = new Scanner(linkageFile); //skip header
-     * if(inputStream.hasNext()) inputStream.next(); //read rows
-     * while(inputStream.hasNext()){ String[] line =
-     * inputStream.next().split(","); linkage.put(line[0],
-     * Integer.valueOf(line[1])); } } catch (FileNotFoundException e) {
-     * e.printStackTrace(); } finally { if (inputStream != null)
-     * inputStream.close(); }
-     * 
-     * return linkage; }
-     */
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (writer != null)
+				writer.close();
+		}
+	}
 
-    private void printCSV(String name, List<String> rows, String header) {
-        PrintWriter writer = null;
+	/*
+	 * Not used
+	 * 
+	 * 
+	 * public void printSyntheticDatasetLinkage(Map<String, Integer> linkageInfo){
+	 * String header = "Attribute,Linkage"; List<String> csvRows = new
+	 * ArrayList<>();
+	 * 
+	 * for(String attribute : linkageInfo.keySet()){ int linkage =
+	 * linkageInfo.get(attribute); csvRows.add(attribute+","+linkage); }
+	 * 
+	 * printCSV("attribute_linkage.csv", csvRows, header); }
+	 * 
+	 * public Map<String, Integer> readSyntheticDatasetLinkage(){ Scanner
+	 * inputStream = null; String path = this.tsPath+"/attribute_linkage.csv"; File
+	 * linkageFile = new File(path); Map<String, Integer> linkage = new HashMap<>();
+	 * 
+	 * try{ inputStream = new Scanner(linkageFile); //skip header
+	 * if(inputStream.hasNext()) inputStream.next(); //read rows
+	 * while(inputStream.hasNext()){ String[] line = inputStream.next().split(",");
+	 * linkage.put(line[0], Integer.valueOf(line[1])); } } catch
+	 * (FileNotFoundException e) { e.printStackTrace(); } finally { if (inputStream
+	 * != null) inputStream.close(); }
+	 * 
+	 * return linkage; }
+	 */
 
-        try {
-            writer = new PrintWriter(new File(this.tsPath + "/" + name + ".csv"));
-            writer.print(header);
+	private void printCSV(String name, List<String> rows, String header) {
+		PrintWriter writer = null;
 
-            for (String row : rows) {
-                writer.println();
-                writer.print(row);
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } finally {
-            if (writer != null)
-                writer.close();
-        }
-    }
+		try {
+			writer = new PrintWriter(new File(this.tsPath + "/" + name + ".csv"));
+			writer.print(header);
 
-    @SuppressWarnings("unchecked")
-    private JSONArray readJSONArray(String path) {
-        JSONParser parser = new JSONParser();
-        JSONArray jsonArray = new JSONArray();
+			for (String row : rows) {
+				writer.println();
+				writer.print(row);
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} finally {
+			if (writer != null)
+				writer.close();
+		}
+	}
 
-        try {
-            Object json = parser.parse(new FileReader(path));
-            if (json instanceof JSONArray)
-                jsonArray = (JSONArray) json;
-            else if (json instanceof JSONObject)
-                jsonArray.add((JSONObject) json);
-        } catch (IOException | ParseException e) {
-            e.printStackTrace();
-        }
+	@SuppressWarnings("unchecked")
+	private JSONArray readJSONArray(String path) {
+		JSONParser parser = new JSONParser();
+		JSONArray jsonArray = new JSONArray();
 
-        return jsonArray;
-    }
+		try {
+			Object json = parser.parse(new FileReader(path));
+			if (json instanceof JSONArray)
+				jsonArray = (JSONArray) json;
+			else if (json instanceof JSONObject)
+				jsonArray.add((JSONObject) json);
+		} catch (IOException | ParseException e) {
+			e.printStackTrace();
+		}
 
-    public void setConfigPath(String configPath) {
-        this.configPath = configPath;
-    }
+		return jsonArray;
+	}
 
-    public void setDatasetPath(String datasetPath) {
-        this.datasetPath = datasetPath;
-    }
+	public void setConfigPath(String configPath) {
+		this.configPath = configPath;
+	}
 
-    public void setRlPath(String rlPath) {
-        this.rlPath = rlPath;
-    }
+	public void setDatasetPath(String datasetPath) {
+		this.datasetPath = datasetPath;
+	}
 
-    public void setTsPath(String tsPath) {
-        this.tsPath = tsPath;
-    }
+	public void setRlPath(String rlPath) {
+		this.rlPath = rlPath;
+	}
+
+	public void setTsPath(String tsPath) {
+		this.tsPath = tsPath;
+	}
 }
