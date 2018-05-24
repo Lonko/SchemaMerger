@@ -2,29 +2,30 @@ package launchers;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import connectors.FileDataConnector;
+import connectors.MongoDbConnectionFactory;
 import connectors.RConnector;
 import connectors.dao.AlignmentDao;
+import connectors.dao.MongoAlignmentDao;
 import matcher.CategoryMatcher;
-import matcher.DynamicCombinationsCalculator;
 import matcher.FeatureExtractor;
 import matcher.TrainingSetGenerator;
 import model.Source;
 import models.generator.Configurations;
-import models.matcher.EvaluationMetrics;
+import models.generator.LaunchConfiguration;
 import models.matcher.Schema;
 
 /**
  * Main class for the Agrawal dataset alignment algorithm
+ * <p>
+ * Input: dataset and configuration, output: clusters<br/>
+ * The class gets the input using the {@link AlignmentDao} (tipically Mongo)
  * 
  * @author federico
  *
@@ -46,12 +47,26 @@ public class DatasetAlignmentAlgorithm {
 	 * OLD doc by Marco: "se true simula un'operazione di sintesi dei prodotti"
 	 * (???)
 	 */
-	private static final boolean WITH_REFERENCE = false;
+	static final boolean WITH_REFERENCE = false;
 
 	private AlignmentDao dao;
 	private FileDataConnector fdc;
 	private RConnector r;
 	private Configurations config;
+	
+	/**
+	 * Factory method to generate this object
+	 * @param dao
+	 * @return
+	 */
+	public static  DatasetAlignmentAlgorithm datasetAlignmentFactory(LaunchConfiguration lc) {
+		RConnector r = new RConnector(lc.getConf().getModelPath());
+		MongoDbConnectionFactory factory = MongoDbConnectionFactory.getMongoInstance(lc.getConf().getMongoURI(),
+				lc.getConf().getDatabaseName());
+		AlignmentDao dao = new MongoAlignmentDao(factory);
+		DatasetAlignmentAlgorithm algorithm = new DatasetAlignmentAlgorithm(dao, lc.getFdc(), r, lc.getConf());
+		return algorithm;
+	}
 
 	public DatasetAlignmentAlgorithm(AlignmentDao dao, FileDataConnector fdc, RConnector r, Configurations config) {
 		super();
@@ -60,14 +75,79 @@ public class DatasetAlignmentAlgorithm {
 		this.r = r;
 		this.config = config;
 	}
+	
+	public Schema launchAlgorithmOnSyntheticDataset(SyntheticDataOutputStat sdo) {
+		try {
+			r.start();
+			List<String> categories = config.getCategories();
+			// Training / model loading
+			if (config.isAlreadyTrained()) {
+				System.out.println("LOADING DEL MODEL");
+				r.loadModel();
+				System.out.println("FINE LOADING DEL MODEL");
+			} else {
+				System.out.println("INIZIO GENERAZIONE TRAINING SET");
+				Map<String, List<String>> tSet = generateTrainingSets(categories, new HashMap<String, List<String>>());
+				fdc.printTrainingSet("trainingSet", tSet.get(categories.get(0)));
+				System.out.println("FINE GENERAZIONE TRAINING SET - INIZIO TRAINING");
+				r.train(config.getTrainingSetPath() + "/trainingSet.csv");
+				System.out.println("FINE TRAINING");
+			}
+	
+			// Classification
+			System.out.println("INIZIO GENERAZIONE SCHEMA");
+			CategoryMatcher cm = new CategoryMatcher(this.dao, r);
+			List<String> sources = sdo.getSourcesByLinkage();
+			Schema schema = launchClassification(sources, categories.get(0), cm, 0, true, WITH_REFERENCE);
+			fdc.printMatchSchema("clusters", schema);
+			System.out.println("FINE GENERAZIONE SCHEMA");
+			return schema;
+		} finally {
+			r.stop();
+		}
+	}
+
+	public void launchAlgorithmOnRealDataset() {
+		try {
+			r.start();
+			// si possono definire più categorie nel fine di configurazione
+			List<String> categories = config.getCategories();
+			// Training / model loading
+			if (config.isAlreadyTrained()) {
+				System.out.println("LOADING DEL MODEL");
+				r.loadModel();
+				System.out.println("FINE LOADING DEL MODEL");
+			} else {
+				System.out.println("INIZIO GENERAZIONE TRAINING SET");
+				String csPath = config.getTrainingSetPath() + "/clones.csv";
+				fdc.printClonedSources("clones", findClonedSources(categories));
+				Map<String, List<String>> clonedSources = fdc.readClonedSources(csPath);
+				Map<String, List<String>> tSet = generateTrainingSets(categories, clonedSources);
+				fdc.printTrainingSet("trainingSet", tSet.get(categories.get(0)));
+				System.out.println("FINE GENERAZIONE TRAINING SET - INIZIO TRAINING");
+				r.train(config.getTrainingSetPath() + "/trainingSet.csv");
+				System.out.println("FINE TRAINING");
+			}
+			// Classification
+			System.out.println("INIZIO GENERAZIONE SCHEMA");
+			CategoryMatcher cm = new CategoryMatcher(this.dao, r);
+			Schema schema = launchClassification(WEBSITES_SORTED_REAL_DATASET, categories.get(0), cm, 0, true,
+					WITH_REFERENCE);
+			fdc.printMatchSchema("clusters", schema);
+			System.out.println("FINE GENERAZIONE SCHEMA");
+		} finally {
+			r.stop();
+		}
+	}
 
 	// cardinality parameter is currently useless
-	public Schema matchAllSourcesInCategory(List<String> orderedWebsites, String category, CategoryMatcher cm,
+	private Schema launchClassification(List<String> orderedWebsites, String category, CategoryMatcher cm,
 			int cardinality, boolean useMI, boolean matchToOne) {
-
-		Schema schema = new Schema();
+		
+		String catalogueSourceName = orderedWebsites.get(0);
+		Schema schema = new Schema(catalogueSourceName);
 		List<String> currentMatchSources = new ArrayList<>();
-		currentMatchSources.add(orderedWebsites.get(0));
+		currentMatchSources.add(catalogueSourceName);
 		// match su tutte le altre sorgenti
 		for (int i = 1; i < orderedWebsites.size(); i++) {
 			System.out.println("-->" + orderedWebsites.get(i) + "<-- (" + i + ")");
@@ -83,7 +163,7 @@ public class DatasetAlignmentAlgorithm {
 	 * couples of sources with schemas that have an overlap of attribute (based on
 	 * their names) above 50% of the smallest of the two sources.
 	 */
-	public Map<Source, List<Source>> findClonedSources(List<String> categories) {
+	private Map<Source, List<Source>> findClonedSources(List<String> categories) {
 		Map<Source, List<Source>> clonedSources = new HashMap<>();
 		Map<Source, List<String>> sourceSchemas = this.dao.getSchemas(categories);
 
@@ -117,7 +197,7 @@ public class DatasetAlignmentAlgorithm {
 	 * @param clonedSources
 	 * @return
 	 */
-	public Map<String, List<String>> generateTrainingSets(List<String> categories,
+	private Map<String, List<String>> generateTrainingSets(List<String> categories,
 			Map<String, List<String>> clonedSources) {
 
 		TrainingSetGenerator tsg = new TrainingSetGenerator(this.dao, new FeatureExtractor(), clonedSources);
@@ -138,134 +218,8 @@ public class DatasetAlignmentAlgorithm {
 		return trainingSets;
 	}
 
-	public EvaluationMetrics evaluateSyntheticResults(List<List<String>> clusters,
-			Map<String, Integer> expectedClusterSizes) {
-		DynamicCombinationsCalculator dcc = new DynamicCombinationsCalculator();
-		int truePositives = 0, falsePositives = 0, expectedPositives = 0;
-		double p, r;
-
-		// calculate expected positives
-		for (int clusterSize : expectedClusterSizes.values())
-			// cluster of cardinality == 1 are not considered
-			if (clusterSize > 1)
-				expectedPositives += dcc.calculateCombinations(clusterSize, 2);
-
-		// calculate true and false positives
-		for (List<String> cluster : clusters) {
-			int size = cluster.size();
-			// cluster of cardinality == 1 are not considered
-			if (size > 1) {
-				Collection<Long> cCollection = cluster.stream().map(attr -> attr.split("###")[0])
-						.collect(Collectors.groupingBy(Function.identity(), Collectors.counting())).values();
-				List<Long> counters = new ArrayList<>(cCollection);
-				// true positives
-				int truePositivesCluster = counters.stream().mapToInt(Long::intValue)
-						.map(c -> dcc.calculateCombinations(c, 2)).sum();
-				truePositives += truePositivesCluster;
-				// false positives
-				falsePositives += dcc.calculateCombinations(size, 2) - truePositivesCluster;
-			}
-		}
-		int computedPositives = truePositives + falsePositives;
-		p = computedPositives == 0 ? 1 : truePositives / (double) computedPositives;
-		r = expectedPositives == 0 ? 1 : truePositives / (double) (expectedPositives);
-		return new EvaluationMetrics(p, r);
-	}
-
-	public void alignmentSyntheticDataset() {
-		// Synthetic dataset generation
-		System.out.println("INIZIO GENERAZIONE DATASET");
-		SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator(fdc, config);
-		boolean reset = true;
-		sdg.generateCatalogue(reset);
-		sdg.generateSources(reset);
-		System.out.println("FINE GENERAZIONE DATASET");
-
-		r.start();
-		List<String> categories = config.getCategories();
-		try {
-			// Training / model loading
-			if (config.isAlreadyTrained()) {
-				System.out.println("LOADING DEL MODEL");
-				r.loadModel();
-				System.out.println("FINE LOADING DEL MODEL");
-			} else {
-				System.out.println("INIZIO GENERAZIONE TRAINING SET");
-				Map<String, List<String>> tSet = generateTrainingSets(categories, new HashMap<String, List<String>>());
-				fdc.printTrainingSet("trainingSet", tSet.get(categories.get(0)));
-				System.out.println("FINE GENERAZIONE TRAINING SET - INIZIO TRAINING");
-				r.train(config.getTrainingSetPath() + "/trainingSet.csv");
-				System.out.println("FINE TRAINING");
-			}
-
-			// Classification
-			System.out.println("INIZIO GENERAZIONE SCHEMA");
-			CategoryMatcher cm = new CategoryMatcher(this.dao, r);
-			boolean withReference = true;
-			List<String> sources = sdg.getSourcesByLinkage();
-			Schema schema = matchAllSourcesInCategory(sources, categories.get(0), cm, 0, true, withReference);
-			fdc.printMatchSchema("clusters", schema);
-			System.out.println("FINE GENERAZIONE SCHEMA");
-
-			// Result Evaluation
-			System.out.println("INIZIO VALUTAZIONE RISULTATI");
-			List<List<String>> clusters = schema.schema2Clusters();
-			Map<String, Integer> sizes = sdg.getAttrLinkage();
-			if (withReference) {
-				clusters = clusters.stream().filter(cluster -> {
-					boolean hasValidAttribute = false;
-					for (String a : cluster) {
-						String source = a.split("###")[1];
-						if (source.equals(sources.get(0))) {
-							hasValidAttribute = true;
-							break;
-						}
-					}
-					return hasValidAttribute;
-				}).collect(Collectors.toList());
-				String category = config.getCategories().get(0);
-				List<String> validAttributes = this.dao.getSingleSchema(new Source(category, sources.get(0)));
-				sizes.keySet().retainAll(validAttributes);
-			}
-			EvaluationMetrics evaluateSyntheticResults = evaluateSyntheticResults(clusters, sizes);
-			System.out.println(evaluateSyntheticResults.toString());
-			System.out.println("FINE VALUTAZIONE RISULTATI");
-		} finally {
-			r.stop();
-		}
-	}
-
-	public void alignmentRealDataset() {
-		r.start();
-		// si possono definire più categorie nel fine di configurazione
-		List<String> categories = config.getCategories();
-
-		try {
-			// Training / model loading
-			if (config.isAlreadyTrained()) {
-				System.out.println("LOADING DEL MODEL");
-				r.loadModel();
-				System.out.println("FINE LOADING DEL MODEL");
-			} else {
-				System.out.println("INIZIO GENERAZIONE TRAINING SET");
-				String csPath = config.getTrainingSetPath() + "/clones.csv";
-				fdc.printClonedSources("clones", findClonedSources(categories));
-				Map<String, List<String>> clonedSources = fdc.readClonedSources(csPath);
-				Map<String, List<String>> tSet = generateTrainingSets(categories, clonedSources);
-				fdc.printTrainingSet("trainingSet", tSet.get(categories.get(0)));
-				System.out.println("FINE GENERAZIONE TRAINING SET - INIZIO TRAINING");
-				r.train(config.getTrainingSetPath() + "/trainingSet.csv");
-				System.out.println("FINE TRAINING");
-			}
-			// Classification
-			System.out.println("INIZIO GENERAZIONE SCHEMA");
-			CategoryMatcher cm = new CategoryMatcher(this.dao, r);
-			Schema schema = matchAllSourcesInCategory(WEBSITES_SORTED_REAL_DATASET, categories.get(0), cm, 0, true,
-					WITH_REFERENCE);
-			fdc.printMatchSchema("clusters", schema);
-			System.out.println("FINE GENERAZIONE SCHEMA");
-		} finally {
-			r.stop();
-		}
+	public AlignmentDao getDao() {
+		//TODO is it ok?
+		return this.dao;
 	}
 }

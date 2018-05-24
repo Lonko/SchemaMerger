@@ -7,19 +7,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.junit.Before;
 import org.junit.Test;
 
 import models.matcher.EvaluationMetrics;
 
+/**
+ * Tests the evaluation method
+ * @author federico
+ *
+ */
 public class CohordinatorTest {
-
-	private DatasetAlignmentAlgorithm alignment;
-
-	@Before
-	public void setUp() throws Exception {
-		this.alignment = new DatasetAlignmentAlgorithm(null, null, null, null);
-	}
 
 	@Test
 	public void testEvaluateSyntheticInWrongCluster() {
@@ -81,7 +78,7 @@ public class CohordinatorTest {
 		List<List<String>> computedClusters = inputs.stream()
 				.map(input -> input.stream().map(nb -> nb.toString() + "###test").collect(Collectors.toList()))
 				.collect(Collectors.toList());
-		EvaluationMetrics results = this.alignment.evaluateSyntheticResults(computedClusters, expectedClusters);
+		EvaluationMetrics results = Cohordinator.evaluateSyntheticResults(computedClusters, expectedClusters);
 		assertEquals(expectedP, results.getPrecision(), 0.001);
 		assertEquals(expectedR, results.getRecall(), 0.001);
 	}

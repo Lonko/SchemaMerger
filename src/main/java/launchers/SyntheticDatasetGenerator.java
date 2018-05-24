@@ -4,10 +4,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
-import connectors.FileDataConnector;
 import connectors.MongoDbConnectionFactory;
-import connectors.dao.SyntheticDatasetDao;
 import connectors.dao.MongoSyntheticDao;
+import connectors.dao.SyntheticDatasetDao;
 import generator.CatalogueGenerator;
 import generator.DictionaryStringGenerator;
 import generator.RandomStringGenerator;
@@ -39,29 +38,28 @@ public class SyntheticDatasetGenerator {
 	private List<String> sourcesByLinkage;
 	/** @see #getAttrLinkage() */
 	private Map<String, Integer> attrLinkage;
-
 	private SyntheticDatasetDao catalogueDao;
-
-	public SyntheticDatasetGenerator(FileDataConnector fdc) {
-		this(fdc, new Configurations(fdc.readConfig()));
-	}
-
-	public SyntheticDatasetGenerator(FileDataConnector fdc, Configurations conf) {
-		this(conf, generateSGFromConf(conf), generateDaoFromConf(fdc, conf));
-	}
-
-	private static SyntheticDatasetDao generateDaoFromConf(FileDataConnector fdc2, Configurations conf2) {
-		MongoDbConnectionFactory factory = MongoDbConnectionFactory.getMongoInstance(conf2.getMongoURI(),
-				conf2.getDatabaseName());
-		return new MongoSyntheticDao(factory);
-	}
-
-	private static StringGenerator generateSGFromConf(Configurations conf2) {
-		String path = conf2.getStringPathFile();
-		if (path.equals(""))
-			return new RandomStringGenerator(SOURCE_NAME_LENGTH, ATTRIBUTE_NAME_LENGTH, TOKEN_LENGTH);
-		else
-			return new DictionaryStringGenerator(path);
+	
+	/**
+	 * Factory method for {@link SyntheticDatasetGenerator}
+	 * @param lc
+	 * @return
+	 */
+	public static SyntheticDatasetGenerator sdgBuilder(LaunchConfiguration lc) {
+		String path = lc.getConf().getStringPathFile();
+		StringGenerator stringGenerator;
+		if (path.equals("")) {
+			stringGenerator = new RandomStringGenerator(SOURCE_NAME_LENGTH, ATTRIBUTE_NAME_LENGTH, TOKEN_LENGTH);
+		} else
+			stringGenerator = new DictionaryStringGenerator(path);
+		
+		MongoDbConnectionFactory factory = MongoDbConnectionFactory.getMongoInstance(lc.getConf().getMongoURI(),
+				lc.getConf().getDatabaseName());
+		MongoSyntheticDao dao = new MongoSyntheticDao(factory);
+		
+		SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator(lc.getConf(), stringGenerator, 
+				dao);
+		return sdg;
 	}
 
 	public SyntheticDatasetGenerator(Configurations conf, StringGenerator sg, SyntheticDatasetDao catalogueDao) {
@@ -72,7 +70,7 @@ public class SyntheticDatasetGenerator {
 	}
 
 	// generate and upload catalogue
-	public void generateCatalogue(boolean delete) {
+	private void generateCatalogue(boolean delete) {
 		CatalogueGenerator cg = new CatalogueGenerator(this.conf, this.sg);
 		List<CatalogueProductPage> catalogue = cg.createCatalogue();
 		this.catalogueDao.uploadCatalogue(catalogue, delete);
@@ -83,7 +81,7 @@ public class SyntheticDatasetGenerator {
 	}
 
 	// generate and upload sources
-	public void generateSources(boolean delete) {
+	private void generateSources(boolean delete) {
 		SourcesGenerator sg = new SourcesGenerator(this.catalogueDao, this.conf, this.sg, this.sizes, this.prodLinkage,
 				this.attrFixedTokens, this.attrValues);
 		this.sourcesBySize = sg.prepareSources();
@@ -91,65 +89,36 @@ public class SyntheticDatasetGenerator {
 		this.sourcesByLinkage = sg.getLinkageOrder(this.sourcesBySize);
 	}
 
-	public int getCatalogueSize() {
-		return this.prodLinkage.getYValues().length;
+	public SyntheticDataOutputStat generateSyntheticData(boolean delete) {
+		System.out.println("Generate catalogue...");
+		long start = System.currentTimeMillis();
+		generateCatalogue(delete);
+		long middle = System.currentTimeMillis();
+		System.out.println("Generate sources...");
+		generateSources(delete);
+		long end = System.currentTimeMillis();
+		
+		long timeForCatalogue = middle - start;
+		long timeForDataset = end - middle;
+		long catalogueTime = timeForCatalogue / 1000;
+		long datasetTime = timeForDataset / 1000;
+		long totalTime = (end - start) / 1000;
+		
+		SyntheticDataOutputStat syntheticDataOutputStat = new SyntheticDataOutputStat(
+				sourcesByLinkage, attrLinkage, catalogueTime, datasetTime, totalTime, 
+				this.prodLinkage.getYValues().length, this.prodLinkage.getSampling());
+		return syntheticDataOutputStat;
 	}
-
-	public int getDatasetSize() {
-		return this.prodLinkage.getSampling();
-	}
-
-	public int getSourceSize(String name) {
-		int i = this.sourcesBySize.indexOf(name);
-		return this.sizes.getYValues()[i];
-	}
-
-	public List<String> getSourcesBySize() {
-		return this.sourcesBySize;
-	}
-
-	public List<String> getSourcesByLinkage() {
-		return this.sourcesByLinkage;
-	}
-
-	/**
-	 * Number of source attributes for each cluster (all correspondent attributes
-	 * have same name in synthetic, sot it can be used as map key)
-	 *
-	 * @return
-	 */
-	public Map<String, Integer> getAttrLinkage() {
-		return this.attrLinkage;
-	}
-
+	
 	public static void main(String[] args) {
-		LaunchConfiguration lc = LaunchConfiguration.getConfigurationFromArgs(args);
-		FileDataConnector fdc = new FileDataConnector(lc.getConfigFile());
-		SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator(fdc);
+		LaunchConfiguration setupConfiguration = LaunchConfiguration.setupConfiguration(args);
+		SyntheticDatasetGenerator sdg = sdgBuilder(setupConfiguration);
 		System.out.println("DELETE EXISTING DATASET? (Y/N)");
 		try (Scanner scanner = new Scanner(System.in)) {
 			boolean delete = Character.toLowerCase(scanner.next().charAt(0)) == 'y';
-			System.out.println("Generate catalogue...");
-			long start = System.currentTimeMillis();
-			sdg.generateCatalogue(delete);
-			long middle = System.currentTimeMillis();
-			System.out.println("Generate sources...");
-			sdg.generateSources(delete);
-			long end = System.currentTimeMillis();
-
-			long timeForCatalogue = middle - start;
-			long timeForDataset = end - middle;
-			long catalogueTime = timeForCatalogue / 1000;
-			long datasetTime = timeForDataset / 1000;
-			long totalTime = (end - start) / 1000;
-
-			System.out.println("Prodotti nel catalogo: " + sdg.getCatalogueSize());
-			System.out.println("Prodotti nel dataset: " + sdg.getDatasetSize());
-			System.out.println("Tempo di generazione del Catalogo: " + (catalogueTime / 60) + " min "
-					+ (catalogueTime % 60) + " sec");
-			System.out.println(
-					"Tempo di generazione del Dataset: " + (datasetTime / 60) + " min " + (datasetTime % 60) + " s ");
-			System.out.println("Tempo di esecuzione totale: " + (totalTime / 60) + " min " + (totalTime % 60) + " s ");
+			SyntheticDataOutputStat output = sdg.generateSyntheticData(delete);
+			System.out.println("END, statistics on output: "+output.toString());
 		}
 	}
+	
 }
