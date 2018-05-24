@@ -10,7 +10,6 @@ public class RationalCurveFunction implements CurveFunction {
 	 * distribution (steeper)
 	 */
 	private static final double ACCEPTABLE_ERROR = 0.0005;
-	private String curveType;
 	private int y0;
 	private int x0;
 	private int minY;
@@ -22,32 +21,20 @@ public class RationalCurveFunction implements CurveFunction {
 	private int[] yValues;
 
 	// for curves whose parameters are all known
-	public RationalCurveFunction(String type, int y0, int x0, int minY) {
-		this.curveType = type;
+	public RationalCurveFunction(double alpha, int y0, int x0, int minY) {
 		this.y0 = y0;
 		this.x0 = x0;
 		this.minY = minY;
 		this.yValues = new int[x0];
-		if (type.equals("1"))
-			this.alpha = 0.5;
-		else if (type.equals("2"))
-			this.alpha = 0.1;
-		else if (type.equals("3"))
-			this.alpha = 0.01;
+		this.alpha = alpha;
 		calculateYValues();
 	}
 
 	// for curves to be defined according to another curve's sampling
-	public RationalCurveFunction(String type, int y0, int prodsPages) {
-		this.curveType = type;
+	public RationalCurveFunction(double alpha, int y0, int prodsPages) {
 		this.y0 = y0;
 		this.minY = 1;
-		if (type.equals("1"))
-			this.alpha = 0.5;
-		else if (type.equals("2"))
-			this.alpha = 0.1;
-		else if (type.equals("3"))
-			this.alpha = 0.01;
+		this.alpha = alpha;
 		calculateYValues(prodsPages);
 	}
 
@@ -136,9 +123,5 @@ public class RationalCurveFunction implements CurveFunction {
 
 	public int[] getYValues() {
 		return yValues;
-	}
-
-	public String getCurveType() {
-		return curveType;
 	}
 }

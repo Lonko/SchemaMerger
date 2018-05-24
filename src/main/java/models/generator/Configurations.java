@@ -4,7 +4,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
-public class Configurations {
+import generator.CatalogueConfiguration;
+import generator.SourceGeneratorConfiguration;
+import models.generator.CurveFunctionFactory.CurveFunctionType;
+
+public class Configurations implements CatalogueConfiguration, SourceGeneratorConfiguration {
 
 	// Parameters for Connectors' constructors and Training
 	private String datasetPath;
@@ -21,14 +25,12 @@ public class Configurations {
 	private int minPages;
 	private int sources;
 	private int maxLinkage;
-	private String sizeCurveType;
-	private String prodCurveType;
-	private String attrCurveType;
+	private CurveFunctionType sizeCurveType;
+	private CurveFunctionType prodCurveType;
+	private CurveFunctionType attrCurveType;
 	private int attributes;
-	private String[] cardinalityClasses;
-	private double[] cardinalityPercentages;
-	private String[] tokenClasses;
-	private double[] tokenPercentages;
+	private ClassesPercentageConfiguration<Integer> cardinalityClasses;
+	private ClassesPercentageConfiguration<TokenClass> tokenClasses;
 	private String stringPathFile = "";
 	private double randomErrorChance;
 	private double differentFormatChance;
@@ -58,9 +60,9 @@ public class Configurations {
 		this.minPages = Integer.valueOf(prop.getProperty("minPages"));
 		this.sources = Integer.valueOf(prop.getProperty("sources"));
 		this.maxLinkage = Integer.valueOf(prop.getProperty("maxLinkage"));
-		this.sizeCurveType = prop.getProperty("curveSizes");
-		this.prodCurveType = prop.getProperty("curveProds");
-		this.attrCurveType = prop.getProperty("curveAttrs");
+		this.sizeCurveType = CurveFunctionType.valueOf(prop.getProperty("curveSizes"));
+		this.prodCurveType = CurveFunctionType.valueOf(prop.getProperty("curveProds"));
+		this.attrCurveType = CurveFunctionType.valueOf(prop.getProperty("curveAttrs"));
 		this.attributes = Integer.valueOf(prop.getProperty("attributes"));
 		this.randomErrorChance = Double.valueOf(prop.getProperty("randomError"));
 		this.differentFormatChance = Double.valueOf(prop.getProperty("formatChance"));
@@ -69,50 +71,14 @@ public class Configurations {
 		this.linkageErrorChance = Double.valueOf(prop.getProperty("linkageError"));
 		this.rlErrorType = RecordLinkageErrorType
 				.valueOf(prop.getProperty("recordLinkageErrorType", RecordLinkageErrorType.ID.name()));
-		loadPercentages(prop);
+		this.cardinalityClasses = new CardinalitiesClassBuilder().generateClassesPercentage(prop.getProperty("cardinalityClasses"), 
+				prop.getProperty("cardinality"));
+		this.tokenClasses = new TokenClassPercentageBuilder().generateClassesPercentage(prop.getProperty("tokensClasses"), 
+				prop.getProperty("tokens"));
 		String path = prop.getProperty("stringFilePath");
 		if (path != null)
 			this.stringPathFile = path;
 
-	}
-
-	public void loadPercentages(Properties prop) {
-		String[] cardClasses = prop.getProperty("cardinalityClasses").split("/");
-		String[] tokensClasses = prop.getProperty("tokensClasses").split("/");
-		String[] cards = prop.getProperty("cardinality").split("/");
-		String[] tokens = prop.getProperty("tokens").split("/");
-
-		// check if the number of classes is the same as the number of
-		// percentages
-		if (cardClasses.length != cards.length || tokensClasses.length != tokens.length) {
-			throw new IllegalArgumentException("Card Classes: " + cardClasses.length + "\tPercentages :" + cards.length
-					+ "\n" + "Token Classes: " + tokensClasses.length + "\tPercentages : " + tokens.length);
-		}
-
-		this.cardinalityClasses = new String[cards.length];
-		this.cardinalityPercentages = new double[cards.length];
-		this.tokenClasses = new String[tokens.length];
-		this.tokenPercentages = new double[tokens.length];
-
-		// load cardinality classes and percentages
-		double totalCard = 0;
-		for (int i = 0; i < cards.length; i++) {
-			this.cardinalityClasses[i] = cardClasses[i];
-			this.cardinalityPercentages[i] = Double.valueOf(cards[i]);
-			totalCard += this.cardinalityPercentages[i];
-		}
-
-		// load tokens classes and percentages
-		double totalTokens = 0;
-		for (int i = 0; i < tokens.length; i++) {
-			this.tokenClasses[i] = tokensClasses[i];
-			this.tokenPercentages[i] = Double.valueOf(tokens[i]);
-			totalTokens += this.tokenPercentages[i];
-		}
-
-		if (totalCard != 100 || totalTokens != 100)
-			throw new IllegalArgumentException(
-					"Cardinality Total: " + totalCard + "\n" + "Token Total: " + totalTokens);
 	}
 
 	/**
@@ -152,28 +118,16 @@ public class Configurations {
 		this.sources = sources;
 	}
 
-	public String getSizeCurveType() {
+	public CurveFunctionType getSizeCurveType() {
 		return sizeCurveType;
 	}
 
-	public void setSizeCurveType(String sizeCurveType) {
-		this.sizeCurveType = sizeCurveType;
-	}
-
-	public String getProdCurveType() {
+	public CurveFunctionType getProdCurveType() {
 		return prodCurveType;
 	}
 
-	public void setProdCurveType(String prodCurveType) {
-		this.prodCurveType = prodCurveType;
-	}
-
-	public String getAttrCurveType() {
+	public CurveFunctionType getAttrCurveType() {
 		return attrCurveType;
-	}
-
-	public void setAttrCurveType(String attrCurveType) {
-		this.attrCurveType = attrCurveType;
 	}
 
 	public int getAttributes() {
@@ -184,44 +138,12 @@ public class Configurations {
 		this.attributes = attributes;
 	}
 
-	public double[] getCardinalityPercentages() {
-		return cardinalityPercentages;
-	}
-
-	public void setCardinalityPercentages(double[] cardinalityPercentages) {
-		this.cardinalityPercentages = cardinalityPercentages;
-	}
-
-	public double[] getTokenPercentages() {
-		return tokenPercentages;
-	}
-
-	public void setTokenPercentages(double[] tokenPercentages) {
-		this.tokenPercentages = tokenPercentages;
-	}
-
-	public String[] getCardinalityClasses() {
-		return cardinalityClasses;
-	}
-
-	public String[] getTokenClasses() {
-		return tokenClasses;
-	}
-
 	public String getStringPathFile() {
 		return stringPathFile;
 	}
 
 	public void setStringPathFile(String stringPathFile) {
 		this.stringPathFile = stringPathFile;
-	}
-
-	public void setCardinalityClasses(String[] cardinalityClasses) {
-		this.cardinalityClasses = cardinalityClasses;
-	}
-
-	public void setTokenClasses(String[] tokenClasses) {
-		this.tokenClasses = tokenClasses;
 	}
 
 	public double getRandomErrorChance() {
@@ -338,5 +260,13 @@ public class Configurations {
 	public RecordLinkageErrorType getRlErrorType() {
 		return rlErrorType;
 	}
+
+	public ClassesPercentageConfiguration<Integer> getCardinalityClasses() {
+		return cardinalityClasses;
+	}
+
+	public ClassesPercentageConfiguration<TokenClass> getTokenClasses() {
+		return tokenClasses;
+	}	
 
 }

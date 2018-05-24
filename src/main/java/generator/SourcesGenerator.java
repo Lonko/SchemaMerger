@@ -13,33 +13,18 @@ import java.util.Set;
 import connectors.dao.SyntheticDatasetDao;
 import model.CatalogueProductPage;
 import model.SourceProductPage;
-import models.generator.Configurations;
-import models.generator.ConstantCurveFunction;
-import models.generator.CurveFunction;
-import models.generator.RationalCurveFunction;
 import models.generator.Configurations.RecordLinkageErrorType;
+import models.generator.CurveFunction;
+import models.generator.CurveFunctionFactory;
+import models.generator.CurveFunctionFactory.CurveFunctionType;
 
 public class SourcesGenerator {
 
-	// random
-	private double randomError;
-	// for example 1 inch = 2.5 cm (affects all tokens)
-	private double differentFormat;
-	// for example 1 cm = 1 centimeter (affects only fixed tokens)
-	private double differentRepresentation;
-	// probability of missing linkage url
-	private double missingLinkage;
-	// probability of a wrong linkage url
-	private double linkageError;
-	private RecordLinkageErrorType rlErrorType;
 	private SyntheticDatasetDao dao;
 	private StringGenerator stringGenerator;
 	private CurveFunction aExtLinkageCurve;
 	private CurveFunction sourceSizes;
 	private CurveFunction productLinkage;
-	private int nSources;
-	private int nAttributes;
-	private List<String> categories;
 	// Map <Source, ids of products in source>
 	private Map<String, List<Integer>> source2Ids = new HashMap<>();
 	// Map <id, Sources in which it appears>
@@ -66,29 +51,19 @@ public class SourcesGenerator {
 	private Map<String, String> fixedTokens = new HashMap<>();
 	// Map <Attribute, values>
 	private Map<String, List<String>> values = new HashMap<>();
+	private SourceGeneratorConfiguration conf;
 
-	public SourcesGenerator(SyntheticDatasetDao dao, Configurations conf, StringGenerator sg, CurveFunction sizes,
+	public SourcesGenerator(SyntheticDatasetDao dao, SourceGeneratorConfiguration conf, StringGenerator sg, CurveFunction sizes,
 			CurveFunction prods, Map<String, String> fixedTokens, Map<String, List<String>> values) {
+		this.conf = conf;
 		this.dao = dao;
-		String curveType = conf.getAttrCurveType();
-		this.nSources = conf.getSources();
-		this.nAttributes = conf.getAttributes();
 		this.fixedTokens = fixedTokens;
 		this.values = values;
 		this.sourceSizes = sizes;
 		this.productLinkage = prods;
-		this.randomError = conf.getRandomErrorChance();
-		this.differentFormat = conf.getDifferentFormatChance();
-		this.differentRepresentation = conf.getDifferentRepresentationChance();
-		this.missingLinkage = conf.getMissingLinkageChance();
-		this.linkageError = conf.getLinkageErrorChance();
-		this.rlErrorType = conf.getRlErrorType();
-		this.categories = conf.getCategories();
-
-		if (curveType.equals("0"))
-			this.aExtLinkageCurve = new ConstantCurveFunction(this.nSources, this.nAttributes, 1);
-		else
-			this.aExtLinkageCurve = new RationalCurveFunction(curveType, this.nSources, this.nAttributes, 1);
+		
+		this.aExtLinkageCurve = CurveFunctionFactory.buildCurveFunction(this.conf.getAttrCurveType(), this.conf.getSources(), 
+				conf.getAttributes(), 1);
 
 		this.stringGenerator = sg;
 	}
@@ -306,9 +281,9 @@ public class SourcesGenerator {
 
 		for (String attribute : schema) {
 			double chance = rand.nextDouble();
-			if (chance <= this.differentFormat)
+			if (chance <= this.conf.getDifferentFormatChance())
 				errors.put(attribute, "format");
-			else if (chance <= this.differentRepresentation + this.differentFormat)
+			else if (chance <= this.conf.getDifferentRepresentationChance() + this.conf.getDifferentFormatChance())
 				errors.put(attribute, "representation");
 			else
 				errors.put(attribute, "none");
@@ -393,7 +368,7 @@ public class SourcesGenerator {
 			// random error
 			for (String token : newValue.split(" ")) {
 				double chance = rand.nextDouble();
-				if (chance <= this.randomError / newValue.split(" ").length)
+				if (chance <= this.conf.getRandomErrorChance() / newValue.split(" ").length)
 					tokens.add(this.stringGenerator.generateAttributeToken());
 				else
 					tokens.add(token);
@@ -412,7 +387,7 @@ public class SourcesGenerator {
 			int realIds = prod.getId();
 			List<String> attrs = pAttrs.get(realIds);
 			String url = source + "/" + realIds + "/";
-			SourceProductPage page = new SourceProductPage(this.categories.get(0), url, source);
+			SourceProductPage page = new SourceProductPage(this.conf.getCategories().get(0), url, source);
 
 			// linkage and IDs
 			List<Integer> ids = buildProductIds(rnd, realIds);
@@ -446,20 +421,20 @@ public class SourcesGenerator {
 		boolean setWrongLinkage;
 
 		/*
-		 * linkageCorrectIndex < this.missingLinkage ----> no linkage <p>
-		 * this.missingLinkage <= linkageCorrectIndex < this.linkageError ----> wrong
-		 * <p> linkage this.missingLinkage + this.linkageError <= linkageCorrectIndex
+		 * linkageCorrectIndex < this.conf.getMissingLinkageChance() ----> no linkage <p>
+		 * this.conf.getMissingLinkageChance() <= linkageCorrectIndex < this.conf.getLinkageErrorChance() ----> wrong
+		 * <p> linkage this.conf.getMissingLinkageChance() + this.conf.getLinkageErrorChance() <= linkageCorrectIndex
 		 * ----> correct linkage
 		 * 
 		 * If linkage error is not configured, linkageCorrectIndex is always 1.
 		 */
 		double linkageCorrectIndex = 1;
-		if (this.rlErrorType.equals(RecordLinkageErrorType.LINKAGE)) {
+		if (this.conf.getRlErrorType().equals(RecordLinkageErrorType.LINKAGE)) {
 			linkageCorrectIndex = rnd.nextDouble();
 		}
-		setCorrectLinkage = this.missingLinkage + this.linkageError <= linkageCorrectIndex;
-		setWrongLinkage = this.missingLinkage <= linkageCorrectIndex
-				&& linkageCorrectIndex < this.linkageError + this.missingLinkage;
+		setCorrectLinkage = this.conf.getMissingLinkageChance() + this.conf.getLinkageErrorChance() <= linkageCorrectIndex;
+		setWrongLinkage = this.conf.getMissingLinkageChance() <= linkageCorrectIndex
+				&& linkageCorrectIndex < this.conf.getLinkageErrorChance() + this.conf.getMissingLinkageChance();
 		List<String> pageLinkage = page.getLinkage();
 
 		if (setCorrectLinkage) {
@@ -483,22 +458,22 @@ public class SourcesGenerator {
 	private List<Integer> buildProductIds(Random rnd, int realId) {
 
 		// If the error is not on ID but on Linkage, then we just return the real ID
-		if (!this.rlErrorType.equals(RecordLinkageErrorType.ID)) {
+		if (!this.conf.getRlErrorType().equals(RecordLinkageErrorType.ID)) {
 			return Arrays.asList(realId);
 		}
 
 		List<Integer> ids = new ArrayList<>();
 		/*
-		 * error < this.missingLinkage => no linkage this.missingLinkage <= error <
-		 * this.linkageError => wrong linkage this.missingLinkage + this.linkageError <=
+		 * error < this.conf.getMissingLinkageChance() => no linkage this.conf.getMissingLinkageChance() <= error <
+		 * this.conf.getLinkageErrorChance() => wrong linkage this.conf.getMissingLinkageChance() + this.conf.getLinkageErrorChance() <=
 		 * error => correct linkage
 		 */
 		double error = rnd.nextDouble();
 
-		if (error > this.missingLinkage + this.linkageError) {
+		if (error > this.conf.getMissingLinkageChance() + this.conf.getLinkageErrorChance()) {
 			// no error
 			ids.add(realId);
-		} else if (error > this.missingLinkage) {
+		} else if (error > this.conf.getMissingLinkageChance()) {
 			// add wrong linkage url
 			int wrongProdId = rnd.nextInt(this.id2Sources.size());
 			ids.add(wrongProdId);
@@ -516,7 +491,7 @@ public class SourcesGenerator {
 	 */
 	private List<SourceProductPage> createSource(String sourceName, int size, List<CatalogueProductPage> products) {
 		List<String> schema = this.schemas.get(sourceName);
-		CurveFunction aIntLinkage = new RationalCurveFunction("2", size, schema.size(), 1);
+		CurveFunction aIntLinkage = CurveFunctionFactory.buildCurveFunction(CurveFunctionType.EXP, size, schema.size(), 1);
 		Map<Integer, List<String>> prodsAttrs = getProdsAttrs(sourceName, schema, aIntLinkage);
 		Map<String, String> attrErrors = checkErrors(schema);
 		Map<String, List<String>> newValues = applyErrors(schema, attrErrors);
@@ -529,7 +504,7 @@ public class SourcesGenerator {
 		Set<String> sourceNamesSet = new HashSet<>();
 		List<String> sourcesNames = new ArrayList<>();
 
-		while (sourceNamesSet.size() < this.nSources) {
+		while (sourceNamesSet.size() < this.conf.getSources()) {
 			sourceNamesSet.add("www." + this.stringGenerator.generateSourceName() + ".com");
 		}
 		sourcesNames.addAll(sourceNamesSet);
