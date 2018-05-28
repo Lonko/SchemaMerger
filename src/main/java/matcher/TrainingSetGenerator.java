@@ -177,7 +177,9 @@ public class TrainingSetGenerator {
 	public List<Features> getTrainingSet(List<Tuple> pExamples, List<Tuple> nExamples, String category,
 			boolean useWebsite) {
 		List<Features> examples = new ArrayList<>();
+		System.out.println("Positive examples");
 		examples.addAll(getAllFeatures(pExamples, category, 1, useWebsite));
+		System.out.println("Negative examples");
 		examples.addAll(getAllFeatures(nExamples, category, 0, useWebsite));
 
 		return examples;
@@ -206,10 +208,9 @@ public class TrainingSetGenerator {
 				.collect(Collectors.groupingBy(Tuple::getAttribute1,
 						Collectors.groupingBy(Tuple::getWebsite2, Collectors.groupingBy(Tuple::getAttribute2))));
 
-		// try(ProgressBar pb = new ProgressBar("Retrieve features for tuple...",
-		// tuples.size())){
+		// TODO ProgressBar does not work currently (says cannot create system terminal), TODO investigate and fix 
+		int counter = 0;
 		for (Entry<String, Map<String, Map<String, List<Tuple>>>> a1_s2_a2_tuple_entry : a1_s2_a2_tuple.entrySet()) {
-			System.out.println("Dealing with attribute " + a1_s2_a2_tuple_entry.getKey());
 			Map<String, Map<String, List<Tuple>>> s2_a2_tuple = a1_s2_a2_tuple_entry.getValue();
 			for (Entry<String, Map<String, List<Tuple>>> s2_a2_tuple_entry : s2_a2_tuple.entrySet()) {
 				List<SourceProductPage> subProds = this.dao.getProds(category, "", s2_a2_tuple_entry.getKey(),
@@ -221,6 +222,7 @@ public class TrainingSetGenerator {
 							s2_a2_tuple_entry.getKey(), subProds, w1_subProds, a2_tuple);
 				}
 			}
+			System.out.println("Done " + ++counter / (double) a1_s2_a2_tuple.size() * 100 +"%");
 		}
 		// }
 		return features;
