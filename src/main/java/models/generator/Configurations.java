@@ -31,12 +31,13 @@ public class Configurations implements CatalogueConfiguration, SourceGeneratorCo
 	private int attributes;
 	private ClassesPercentageConfiguration<Integer> cardinalityClasses;
 	private ClassesPercentageConfiguration<TokenClass> tokenClasses;
+	private ClassesPercentageConfiguration<Double> valueErrorChanceClasses;
+	private ClassesPercentageConfiguration<Double> linkageErrorChanceClasses;
+	private ClassesPercentageConfiguration<Double> missingLinkageChanceClasses;
+	private ClassesPercentageConfiguration<Double> attributeRandomErrorClasses;
 	private String stringPathFile = "";
-	private double randomErrorChance;
 	private double differentFormatChance;
 	private double differentRepresentationChance;
-	private double missingLinkageChance;
-	private double linkageErrorChance;
 
 	/** @see Configurations#getRlErrorType() */
 	public enum RecordLinkageErrorType {
@@ -64,17 +65,22 @@ public class Configurations implements CatalogueConfiguration, SourceGeneratorCo
 		this.prodCurveType = CurveFunctionType.valueOf(prop.getProperty("curveProds"));
 		this.attrCurveType = CurveFunctionType.valueOf(prop.getProperty("curveAttrs"));
 		this.attributes = Integer.valueOf(prop.getProperty("attributes"));
-		this.randomErrorChance = Double.valueOf(prop.getProperty("randomError"));
 		this.differentFormatChance = Double.valueOf(prop.getProperty("formatChance"));
 		this.differentRepresentationChance = Double.valueOf(prop.getProperty("representationChance"));
-		this.missingLinkageChance = Double.valueOf(prop.getProperty("missingLinkage"));
-		this.linkageErrorChance = Double.valueOf(prop.getProperty("linkageError"));
 		this.rlErrorType = RecordLinkageErrorType
 				.valueOf(prop.getProperty("recordLinkageErrorType", RecordLinkageErrorType.ID.name()));
 		this.cardinalityClasses = new CardinalitiesClassBuilder().generateClassesPercentage(prop.getProperty("cardinalityClasses"), 
 				prop.getProperty("cardinality"));
 		this.tokenClasses = new TokenClassPercentageBuilder().generateClassesPercentage(prop.getProperty("tokensClasses"), 
 				prop.getProperty("tokens"));
+		this.valueErrorChanceClasses = new RatioClassBuilder().generateClassesPercentage(prop.getProperty("randomErrorClasses"), 
+				prop.getProperty("randomErrorPercentages"));		
+		this.linkageErrorChanceClasses = new RatioClassBuilder().generateClassesPercentage(prop.getProperty("linkageErrorClasses"), 
+				prop.getProperty("linkageErrorPercentages"));	
+		this.missingLinkageChanceClasses = new RatioClassBuilder().generateClassesPercentage(prop.getProperty("missingLinkageClasses"), 
+				prop.getProperty("missingLinkagePercentages"));
+		this.attributeRandomErrorClasses = new RatioClassBuilder().generateClassesPercentage(prop.getProperty("attributeRandomErrorClasses"), 
+				prop.getProperty("attributeRandomErrorPercentages"));			
 		String path = prop.getProperty("stringFilePath");
 		if (path != null)
 			this.stringPathFile = path;
@@ -146,14 +152,6 @@ public class Configurations implements CatalogueConfiguration, SourceGeneratorCo
 		this.stringPathFile = stringPathFile;
 	}
 
-	public double getRandomErrorChance() {
-		return randomErrorChance;
-	}
-
-	public void setRandomErrorChance(double randomErrorChance) {
-		this.randomErrorChance = randomErrorChance;
-	}
-
 	public double getDifferentFormatChance() {
 		return differentFormatChance;
 	}
@@ -168,22 +166,6 @@ public class Configurations implements CatalogueConfiguration, SourceGeneratorCo
 
 	public void setDifferentRepresentationChance(double differentRepresentationChance) {
 		this.differentRepresentationChance = differentRepresentationChance;
-	}
-
-	public double getMissingLinkageChance() {
-		return missingLinkageChance;
-	}
-
-	public void setMissingLinkageChance(double missingLinkageChance) {
-		this.missingLinkageChance = missingLinkageChance;
-	}
-
-	public double getLinkageErrorChance() {
-		return linkageErrorChance;
-	}
-
-	public void setLinkageErrorChance(double linkageErrorChance) {
-		this.linkageErrorChance = linkageErrorChance;
 	}
 
 	public String getDatasetPath() {
@@ -267,6 +249,26 @@ public class Configurations implements CatalogueConfiguration, SourceGeneratorCo
 
 	public ClassesPercentageConfiguration<TokenClass> getTokenClasses() {
 		return tokenClasses;
+	}
+
+	@Override
+	public ClassesPercentageConfiguration<Double> getValueErrorChanceClasses() {
+		return valueErrorChanceClasses;
+	}
+	
+	@Override
+	public ClassesPercentageConfiguration<Double> getLinkageErrorChanceClasses() {
+		return linkageErrorChanceClasses;
+	}
+
+	@Override
+	public ClassesPercentageConfiguration<Double> getMissingLinkageChanceClasses() {
+		return missingLinkageChanceClasses;
+	}
+
+	@Override
+	public ClassesPercentageConfiguration<Double> getAttributeRandomErrorClasses() {
+		return attributeRandomErrorClasses;
 	}	
 
 }

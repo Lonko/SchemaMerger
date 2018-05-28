@@ -28,5 +28,7 @@ public interface CatalogueConfiguration {
 	public ClassesPercentageConfiguration<Integer> getCardinalityClasses();
 
 	public ClassesPercentageConfiguration<TokenClass> getTokenClasses();
+	
+	public ClassesPercentageConfiguration<Double> getAttributeRandomErrorClasses();
 
 }

@@ -2,6 +2,7 @@ package generator;
 
 import java.util.List;
 
+import models.generator.ClassesPercentageConfiguration;
 import models.generator.Configurations.RecordLinkageErrorType;
 import models.generator.CurveFunctionFactory.CurveFunctionType;
 
@@ -19,15 +20,15 @@ public interface SourceGeneratorConfiguration {
 
 	public int getAttributes();
 
-	public double getRandomErrorChance();
-
 	public double getDifferentFormatChance();
 
 	public double getDifferentRepresentationChance();
+	
+	public ClassesPercentageConfiguration<Double> getValueErrorChanceClasses();
 
-	public double getMissingLinkageChance();
-
-	public double getLinkageErrorChance();
+	public ClassesPercentageConfiguration<Double> getLinkageErrorChanceClasses();
+	
+	public ClassesPercentageConfiguration<Double> getMissingLinkageChanceClasses();	
 
 	public RecordLinkageErrorType getRlErrorType();
 

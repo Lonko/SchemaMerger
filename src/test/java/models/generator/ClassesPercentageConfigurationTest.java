@@ -3,6 +3,8 @@ package models.generator;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,16 +25,11 @@ public class ClassesPercentageConfigurationTest {
 				20.);
 		Map<String, Integer> assigned = classes
 				.assignClasses(Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j"));
-		assertEquals(1, assigned.get("a").intValue());
-		assertEquals(2, assigned.get("b").intValue());
-		assertEquals(2, assigned.get("c").intValue());
-		assertEquals(2, assigned.get("d").intValue());
-		assertEquals(2, assigned.get("e").intValue());
-		assertEquals(2, assigned.get("f").intValue());
-		assertEquals(3, assigned.get("g").intValue());
-		assertEquals(3, assigned.get("h").intValue());
-		assertEquals(4, assigned.get("i").intValue());
-		assertEquals(4, assigned.get("j").intValue());
+		Collection<Integer> allValues = assigned.values();
+		assertEquals(1, Collections.frequency(allValues, 1));
+		assertEquals(5, Collections.frequency(allValues, 2));
+		assertEquals(2, Collections.frequency(allValues, 3));
+		assertEquals(2, Collections.frequency(allValues, 4));
 	}
 
 	@Test
@@ -45,43 +42,41 @@ public class ClassesPercentageConfigurationTest {
 		ClassesPercentageConfiguration<Integer> classes = generateClasses(Arrays.asList(1, 2, 3, 4), 80., 9.9, 9.9,
 				0.2);
 		Map<String, Integer> assigned = classes.assignClasses(Arrays.asList("a", "b", "c", "d", "e"));
-		assertEquals(1, assigned.get("a").intValue());
-		assertEquals(1, assigned.get("b").intValue());
-		assertEquals(1, assigned.get("c").intValue());
-		assertEquals(1, assigned.get("d").intValue());
-		// Note that last attribute is assigned to last class, as we need to fill last
+		Collection<Integer> allValues = assigned.values();
+		assertEquals(4, Collections.frequency(allValues, 1));
+		// Note that one attribute is assigned to last class, as we need to fill last
 		// element
-		assertEquals(4, assigned.get("e").intValue());
+		assertEquals(1, Collections.frequency(allValues, 4));
 	}
 
 	@Test
 	/**
-	 * Here the last class remains without attributes even if its percentage would be enough (still because of approximations)
+	 * Here the last class remains without attributes even if its percentage would
+	 * be enough (still because of approximations)
 	 */
 	public void testAssignClassesTooManyClasses() {
 		ClassesPercentageConfiguration<Integer> classes = generateClasses(Arrays.asList(1, 2, 3), 50.1, 30.1, 19.8);
 		Map<String, Integer> assigned = classes.assignClasses(Arrays.asList("a", "b", "c", "d", "e"));
-		assertEquals(1, assigned.get("a").intValue());
-		assertEquals(1, assigned.get("b").intValue());
-		assertEquals(1, assigned.get("c").intValue());
-		assertEquals(2, assigned.get("d").intValue());
-		assertEquals(2, assigned.get("e").intValue());
+		Collection<Integer> allValues = assigned.values();
+
+		assertEquals(3, Collections.frequency(allValues, 1));
+		assertEquals(2, Collections.frequency(allValues, 2));
 	}
-	
+
 	@Test(expected = IllegalArgumentException.class)
 	/**
 	 * Here percentages are wrong
 	 */
 	public void testPercentagesTooHigh() {
-		generateClasses(Arrays.asList(1, 2, 3), 50.1,30.1,20.1);
+		generateClasses(Arrays.asList(1, 2, 3), 50.1, 30.1, 20.1);
 	}
-	
+
 	@Test(expected = IllegalArgumentException.class)
 	/**
 	 * Here percentages are wrong
 	 */
 	public void testPercentagesTooLow() {
-		generateClasses(Arrays.asList(1, 2, 3), 49.9,29.9,19.9);
+		generateClasses(Arrays.asList(1, 2, 3), 49.9, 29.9, 19.9);
 	}
 
 	private static <T> ClassesPercentageConfiguration<T> generateClasses(List<T> classes, Double... elements) {

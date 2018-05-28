@@ -14,6 +14,11 @@ import models.generator.CurveFunction;
 import models.generator.CurveFunctionFactory;
 import models.generator.TokenClass;
 
+/**
+ * Generator of catalogue schema and pages
+ * @author mmonteleone
+ *
+ */
 public class CatalogueGenerator {
 
 	private static final String CATEGORY_NAME_FOR_SYNTHETIC_DATASET = "fakeCategory";
@@ -24,6 +29,7 @@ public class CatalogueGenerator {
 	private Map<String, List<String>> attrValues = new HashMap<>();
 	private Map<String, String> attrFixedToken = new HashMap<>();
 	private Map<String, Integer> cardinalities = new HashMap<>();
+	private Map<String, Double> attributeErrorRate = new HashMap<>();
 	private Map<String, TokenClass> tokens = new HashMap<>();
 	private CatalogueConfiguration conf;
 	private int nProducts;
@@ -65,6 +71,7 @@ public class CatalogueGenerator {
 		attrNames.addAll(attrNamesSet);
 
 		this.cardinalities = this.conf.getCardinalityClasses().assignClasses(attrNames);
+		this.attributeErrorRate = this.conf.getAttributeRandomErrorClasses().assignClasses(attrNames);
 		this.tokens = this.conf.getTokenClasses().assignClasses(attrNames);
 
 		generateTokenPools();
@@ -149,4 +156,11 @@ public class CatalogueGenerator {
 	public Map<String, List<String>> getAttrValues() {
 		return attrValues;
 	}
+
+	/**
+	 * @return for each attribute name, its error rate
+	 */
+	public Map<String, Double> getAttributeErrorRate() {
+		return attributeErrorRate;
+	}	
 }

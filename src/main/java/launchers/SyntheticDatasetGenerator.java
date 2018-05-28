@@ -39,6 +39,7 @@ public class SyntheticDatasetGenerator {
 	/** @see #getAttrLinkage() */
 	private Map<String, Integer> attrLinkage;
 	private SyntheticDatasetDao catalogueDao;
+	private Map<String, Double> attrErrorRate;
 	
 	/**
 	 * Factory method for {@link SyntheticDatasetGenerator}
@@ -59,6 +60,7 @@ public class SyntheticDatasetGenerator {
 		
 		SyntheticDatasetGenerator sdg = new SyntheticDatasetGenerator(lc.getConf(), stringGenerator, 
 				dao);
+				//new SyntheticDatasetDaoMock(false));
 		return sdg;
 	}
 
@@ -78,12 +80,13 @@ public class SyntheticDatasetGenerator {
 		this.prodLinkage = cg.getProductLinkageCurve();
 		this.attrFixedTokens = cg.getAttrFixedToken();
 		this.attrValues = cg.getAttrValues();
+		this.attrErrorRate = cg.getAttributeErrorRate();
 	}
 
 	// generate and upload sources
 	private void generateSources(boolean delete) {
 		SourcesGenerator sg = new SourcesGenerator(this.catalogueDao, this.conf, this.sg, this.sizes, this.prodLinkage,
-				this.attrFixedTokens, this.attrValues);
+				this.attrFixedTokens, this.attrValues, this.attrErrorRate);
 		this.sourcesBySize = sg.prepareSources();
 		this.attrLinkage = sg.createSources(this.sourcesBySize, delete);
 		this.sourcesByLinkage = sg.getLinkageOrder(this.sourcesBySize);

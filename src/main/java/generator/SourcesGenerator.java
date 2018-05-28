@@ -18,6 +18,11 @@ import models.generator.CurveFunction;
 import models.generator.CurveFunctionFactory;
 import models.generator.CurveFunctionFactory.CurveFunctionType;
 
+/**
+ * Generator of product pages of each source, provided the catalogue schema and pages
+ * @author mmonteleone
+ *
+ */
 public class SourcesGenerator {
 
 	private SyntheticDatasetDao dao;
@@ -35,6 +40,11 @@ public class SourcesGenerator {
 	// list of "tail" attributes (in terms of number of sources in which they
 	// appear)
 	private List<String> tailAttributes = new ArrayList<>();
+	
+	// Map of source name --> Error rates for that source (value, wrong linkage-missing linkage) 
+	private Map<String, Double> source2valueErrorRate;
+	private Map<String, Double> source2linkageErrorRate;
+	private Map<String, Double> source2missingLinkageRate;
 	/*
 	 * Maps to replace by implementing Attribute objects
 	 */
@@ -52,9 +62,10 @@ public class SourcesGenerator {
 	// Map <Attribute, values>
 	private Map<String, List<String>> values = new HashMap<>();
 	private SourceGeneratorConfiguration conf;
+	private Map<String, Double> attrErrorRate;
 
 	public SourcesGenerator(SyntheticDatasetDao dao, SourceGeneratorConfiguration conf, StringGenerator sg, CurveFunction sizes,
-			CurveFunction prods, Map<String, String> fixedTokens, Map<String, List<String>> values) {
+			CurveFunction prods, Map<String, String> fixedTokens, Map<String, List<String>> values, Map<String, Double> attrErrorRate) {
 		this.conf = conf;
 		this.dao = dao;
 		this.fixedTokens = fixedTokens;
@@ -66,6 +77,7 @@ public class SourcesGenerator {
 				conf.getAttributes(), 1);
 
 		this.stringGenerator = sg;
+		this.attrErrorRate = attrErrorRate;
 	}
 
 	// assigns attributes to each source
@@ -351,6 +363,7 @@ public class SourcesGenerator {
 	private void addSpecsToProductPage(SourceProductPage page, Map<String, String> oldSpecs,
 			Map<String, List<String>> newValues, List<String> attrs) {
 		Random rand = new Random();
+		double errorRateForSource = this.source2valueErrorRate.get(page.getSource().getWebsite());
 
 		// check each attribute
 		for (String attribute : oldSpecs.keySet()) {
@@ -366,9 +379,11 @@ public class SourcesGenerator {
 			}
 			List<String> tokens = new ArrayList<>();
 			// random error
+			Double attributeErrorRate = this.attrErrorRate.get(attribute);
+			double localErrorRateForValue = attributeErrorRate + errorRateForSource - attributeErrorRate * errorRateForSource;
 			for (String token : newValue.split(" ")) {
 				double chance = rand.nextDouble();
-				if (chance <= this.conf.getRandomErrorChance() / newValue.split(" ").length)
+				if (chance <= localErrorRateForValue / newValue.split(" ").length)
 					tokens.add(this.stringGenerator.generateAttributeToken());
 				else
 					tokens.add(token);
@@ -382,6 +397,8 @@ public class SourcesGenerator {
 			Map<Integer, List<String>> pAttrs, List<CatalogueProductPage> products) {
 		List<SourceProductPage> prodPages = new ArrayList<>();
 		Random rnd = new Random();
+		double missingLinkageChanceForSource = this.source2missingLinkageRate.get(source);
+		double wrongLinkageChanceForSource = this.source2linkageErrorRate.get(source);
 
 		for (CatalogueProductPage prod : products) {
 			int realIds = prod.getId();
@@ -390,12 +407,12 @@ public class SourcesGenerator {
 			SourceProductPage page = new SourceProductPage(this.conf.getCategories().get(0), url, source);
 
 			// linkage and IDs
-			List<Integer> ids = buildProductIds(rnd, realIds);
+			List<Integer> ids = buildProductIds(missingLinkageChanceForSource, wrongLinkageChanceForSource, rnd, realIds);
 			page.setIds(ids);
 			for (Integer id : ids) {
 				for (String rlSource : this.id2Sources.get(id)) {
 					if (!rlSource.equals(source)) {
-						assignLinkageToPage(rnd, id, page, rlSource);
+						assignLinkageToPage(missingLinkageChanceForSource, wrongLinkageChanceForSource, rnd, id, page, rlSource);
 					}
 				}
 			}
@@ -409,13 +426,16 @@ public class SourcesGenerator {
 
 	/**
 	 * Assign correct linkage to pages, potentially adding error or missing values
+	 * @param wrongLinkageChanceForSource 
+	 * @param missingLinkageChanceForSource 
 	 * 
 	 * @param rnd
 	 * @param id
 	 * @param page
 	 * @param rlSource
 	 */
-	private void assignLinkageToPage(Random rnd, int id, SourceProductPage page, String rlSource) {
+	private void assignLinkageToPage(double missingLinkageChanceForSource, double wrongLinkageChanceForSource, 
+			Random rnd, int id, SourceProductPage page, String rlSource) {
 		// By default the correct linkage should be added to the page
 		boolean setCorrectLinkage;
 		boolean setWrongLinkage;
@@ -432,9 +452,9 @@ public class SourcesGenerator {
 		if (this.conf.getRlErrorType().equals(RecordLinkageErrorType.LINKAGE)) {
 			linkageCorrectIndex = rnd.nextDouble();
 		}
-		setCorrectLinkage = this.conf.getMissingLinkageChance() + this.conf.getLinkageErrorChance() <= linkageCorrectIndex;
-		setWrongLinkage = this.conf.getMissingLinkageChance() <= linkageCorrectIndex
-				&& linkageCorrectIndex < this.conf.getLinkageErrorChance() + this.conf.getMissingLinkageChance();
+		setCorrectLinkage = missingLinkageChanceForSource + wrongLinkageChanceForSource <= linkageCorrectIndex;
+		setWrongLinkage = missingLinkageChanceForSource <= linkageCorrectIndex
+				&& linkageCorrectIndex < wrongLinkageChanceForSource + missingLinkageChanceForSource;
 		List<String> pageLinkage = page.getLinkage();
 
 		if (setCorrectLinkage) {
@@ -455,8 +475,7 @@ public class SourcesGenerator {
 	 * @param id
 	 * @param linkage
 	 */
-	private List<Integer> buildProductIds(Random rnd, int realId) {
-
+	private List<Integer> buildProductIds(double missingLinkageChanceForSource, double wrongLinkageChanceForSource, Random rnd, int realId) {
 		// If the error is not on ID but on Linkage, then we just return the real ID
 		if (!this.conf.getRlErrorType().equals(RecordLinkageErrorType.ID)) {
 			return Arrays.asList(realId);
@@ -470,10 +489,10 @@ public class SourcesGenerator {
 		 */
 		double error = rnd.nextDouble();
 
-		if (error > this.conf.getMissingLinkageChance() + this.conf.getLinkageErrorChance()) {
+		if (error > missingLinkageChanceForSource + wrongLinkageChanceForSource) {
 			// no error
 			ids.add(realId);
-		} else if (error > this.conf.getMissingLinkageChance()) {
+		} else if (error > missingLinkageChanceForSource) {
 			// add wrong linkage url
 			int wrongProdId = rnd.nextInt(this.id2Sources.size());
 			ids.add(wrongProdId);
@@ -511,6 +530,9 @@ public class SourcesGenerator {
 
 		assignAttributes(sourcesNames);
 		assignProducts(sourcesNames);
+		this.source2valueErrorRate = this.conf.getValueErrorChanceClasses().assignClasses(sourcesNames);
+		this.source2linkageErrorRate = this.conf.getLinkageErrorChanceClasses().assignClasses(sourcesNames);
+		this.source2missingLinkageRate = this.conf.getMissingLinkageChanceClasses().assignClasses(sourcesNames);
 
 		return sourcesNames;
 	}

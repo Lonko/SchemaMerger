@@ -1,5 +1,7 @@
 package models.generator;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -43,11 +45,13 @@ public class ClassesPercentageConfiguration<T> {
 	public Map<String, T> assignClasses(List<String> attrs) {
 		
 		Map<String, T> result = new HashMap<>();
-		Iterator<String> attributeIterator = attrs.iterator();
+		List<String> shuffled = new ArrayList<>(attrs);
+		Collections.shuffle(shuffled);
+		Iterator<String> attributeIterator = shuffled.iterator();
 		Iterator<Entry<T, Double>> classesIterator = this.class2percentage.entrySet().iterator();
 		while (classesIterator.hasNext()) {
 			Entry<T, Double> currentClass = classesIterator.next();
-			long numberOfElementsInThisClass = Math.round(currentClass.getValue() * attrs.size() / 100);
+			long numberOfElementsInThisClass = Math.round(currentClass.getValue() * shuffled.size() / 100);
 			
 			
 			//Last class may have  not enough attributes to affect (because of approximations), we then check the attribute iterator...

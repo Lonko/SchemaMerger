@@ -23,4 +23,9 @@ public class CatalogueProductPage extends AbstractProductPage {
 	public String getCategory() {
 		return category;
 	}
+
+	@Override
+	public String toString() {
+		return "CatalogueProductPage [id=" + id + ", category=" + category + "]";
+	}	
 }
