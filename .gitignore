@@ -5,7 +5,7 @@ src/main/resources/filtered_specifications/
 src/main/resources/specifications/
 src/main/resources/classification/*.csv
 src/main/resources/classification/*.json
-src/main/resources/classification/model*.rda
+src/main/resources/classification/modelN.rda
 src/main/resources/classification/test_model.rda
 src/main/resources/classification/.Rhistory
 src/main/resources/classification/backup/
