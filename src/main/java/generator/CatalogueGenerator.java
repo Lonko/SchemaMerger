@@ -10,9 +10,9 @@ import java.util.Random;
 import java.util.Set;
 
 import model.CatalogueProductPage;
+import model.SyntheticAttribute;
 import models.generator.CurveFunction;
 import models.generator.CurveFunctionFactory;
-import models.generator.TokenClass;
 
 /**
  * Generator of catalogue schema and pages
@@ -23,26 +23,26 @@ public class CatalogueGenerator {
 
 	private static final String CATEGORY_NAME_FOR_SYNTHETIC_DATASET = "fakeCategory";
 	private StringGenerator stringGenerator;
-	private CurveFunction sizeCurve;
-	private CurveFunction productLinkageCurve;
+	private CurveFunction sources2nbPagesCurve;
+	private CurveFunction product2nbSourcesCurve;
+	private CurveFunction attribute2nbSourcesCurve;
 	private Map<Integer, List<String>> fixedTokenPool = new HashMap<>();
-	private Map<String, List<String>> attrValues = new HashMap<>();
-	private Map<String, String> attrFixedToken = new HashMap<>();
-	private Map<String, Integer> cardinalities = new HashMap<>();
-	private Map<String, Double> attributeErrorRate = new HashMap<>();
-	private Map<String, TokenClass> tokens = new HashMap<>();
+	private Map<SyntheticAttribute, List<String>> attrValues = new HashMap<>();
+	private Map<SyntheticAttribute, String> attrFixedToken = new HashMap<>();
 	private CatalogueConfiguration conf;
 	private int nProducts;
 
 	public CatalogueGenerator(CatalogueConfiguration conf, StringGenerator sg) {
 		this.conf = conf;
-		this.sizeCurve = CurveFunctionFactory.buildCurveFunction(conf.getSizeCurveType(), 
+		this.sources2nbPagesCurve = CurveFunctionFactory.buildCurveFunction(conf.getSizeCurveType(), 
 				conf.getMaxPages(), conf.getSources(), conf.getMinPages());
 		//TODO is it ok to always use maxLinkage as y0? In older version, in case of constant curve,
 		//conf.getSources were used
-		this.productLinkageCurve = CurveFunctionFactory.buildCurveFunction(conf.getSizeCurveType(), 
-				conf.getMaxLinkage(), this.sizeCurve.getSampling());
-		this.nProducts = this.productLinkageCurve.getYValues().length;
+		this.product2nbSourcesCurve = CurveFunctionFactory.buildCurveFunction(conf.getSizeCurveType(), 
+				conf.getMaxLinkage(), this.sources2nbPagesCurve.getSampling());
+		this.attribute2nbSourcesCurve = CurveFunctionFactory.buildCurveFunction(this.conf.getAttrCurveType(), this.conf.getSources(), 
+				conf.getAttributes(), 1);
+		this.nProducts = this.product2nbSourcesCurve.getYValues().length;
 		this.stringGenerator = sg;
 	}
 
@@ -62,43 +62,45 @@ public class CatalogueGenerator {
 	// generates the attributes' names and their possible values
 	private void prepareAttributes() {
 		// generate attributes ids
-		Set<String> attrNamesSet = new HashSet<>();
-		List<String> attrNames = new ArrayList<>();
+		Set<SyntheticAttribute> attrNamesSet = new HashSet<>();
+		List<SyntheticAttribute> attrNames = new ArrayList<>();
 
 		while (attrNamesSet.size() < this.conf.getAttributes()) {
-			attrNamesSet.add(this.stringGenerator.generateAttributeName());
+			attrNamesSet.add(new SyntheticAttribute(this.stringGenerator.generateAttributeName()));
 		}
 		attrNames.addAll(attrNamesSet);
 
-		this.cardinalities = this.conf.getCardinalityClasses().assignClasses(attrNames);
-		this.attributeErrorRate = this.conf.getAttributeRandomErrorClasses().assignClasses(attrNames);
-		this.tokens = this.conf.getTokenClasses().assignClasses(attrNames);
+		this.conf.getCardinalityClasses().assignClasses(attrNames, (attr, card) -> attr.setCardinality(card));
+		this.conf.getAttributeRandomErrorClasses().assignClasses(attrNames, (attr, errorRate) -> attr.setErrorRate(errorRate));
+		this.conf.getTokenClasses().assignClasses(attrNames, (attr, tokenClass) -> attr.setTokenClass(tokenClass));
 
 		generateTokenPools();
-		for (String attribute : attrNames) {
-			int cardinality = this.cardinalities.get(attribute);
-			List<String> tokenPool = this.fixedTokenPool.get(cardinality);
+		int headThreshold = this.attribute2nbSourcesCurve.getHeadThreshold();
+		for (int i = 0; i< attrNames.size(); i++) {
+			SyntheticAttribute attribute = attrNames.get(i);
+			List<String> tokenPool = this.fixedTokenPool.get(attribute.getCardinality());
 			Collections.shuffle(tokenPool);
-			TokenClass attrToken = this.tokens.get(attribute);
 			String fixedTokens = "";
+			// mark attribute as head or tail
+			attribute.setHead(i <= headThreshold);
 
 			/*
 			 * TODO FP: perché avere un pool di token fissi, invece di generarli per ogni
 			 * attributo? I token fissi sono fissi all'interno dell'attributo, non tra
 			 * attributi o sbaglio?
 			 */
-			for (int i = 0; i < attrToken.getFixed(); i++) {
+			for (int j = 0; j < attribute.getTokenClass().getFixed(); j++) {
 				// If we reach the end of available tokens, we come back from the beginning
-				fixedTokens += tokenPool.get(i % tokenPool.size()) + " ";
+				fixedTokens += tokenPool.get(j % tokenPool.size()) + " ";
 			}
 
 			this.attrFixedToken.put(attribute, fixedTokens.trim());
 
 			List<String> generatedValues = new ArrayList<String>();
 			Set<String> valueSet = new HashSet<>();
-			while (valueSet.size() < cardinality) {
+			while (valueSet.size() < attribute.getCardinality()) {
 				String value = "";
-				for (int j = 0; j < attrToken.getRandom(); j++)
+				for (int j = 0; j < attribute.getTokenClass().getRandom(); j++)
 					value += this.stringGenerator.generateAttributeToken() + " ";
 				value += fixedTokens;
 				valueSet.add(value.trim());
@@ -112,11 +114,11 @@ public class CatalogueGenerator {
 	// generates a single product
 	private CatalogueProductPage generateProductPage(int id) {
 		CatalogueProductPage page = new CatalogueProductPage(id, CATEGORY_NAME_FOR_SYNTHETIC_DATASET);
-		for (Map.Entry<String, List<String>> attribute : this.attrValues.entrySet()) {
-			String name = attribute.getKey();
+		for (Map.Entry<SyntheticAttribute, List<String>> attribute : this.attrValues.entrySet()) {
+			SyntheticAttribute attr = attribute.getKey();
 			int index = new Random().nextInt(attribute.getValue().size());
 			String value = attribute.getValue().get(index);
-			page.addAttributeValue(name, value);
+			page.addAttributeValue(attr.toString(), value);
 		}
 		return page;
 	}
@@ -124,7 +126,7 @@ public class CatalogueGenerator {
 	// generates all products and adds them to the catalogue
 	private List<CatalogueProductPage> generateProducts() {
 		List<CatalogueProductPage> products = new ArrayList<CatalogueProductPage>();
-		List<String> attributes = new ArrayList<>();
+		List<SyntheticAttribute> attributes = new ArrayList<>();
 		attributes.addAll(this.attrValues.keySet());
 
 		// each iteration is a batch of products to upload
@@ -141,26 +143,23 @@ public class CatalogueGenerator {
 		return generateProducts();
 	}
 
-	public CurveFunction getSizeCurve() {
-		return sizeCurve;
+	public CurveFunction getSources2nbPagesCurve() {
+		return sources2nbPagesCurve;
 	}
 
-	public CurveFunction getProductLinkageCurve() {
-		return productLinkageCurve;
+	public CurveFunction getProduct2nbPagesInLinkageCurve() {
+		return product2nbSourcesCurve;
 	}
 
-	public Map<String, String> getAttrFixedToken() {
+	public CurveFunction getAttribute2nbSourcesCurve() {
+		return attribute2nbSourcesCurve;
+	}
+
+	public Map<SyntheticAttribute, String> getAttrFixedToken() {
 		return attrFixedToken;
 	}
 
-	public Map<String, List<String>> getAttrValues() {
+	public Map<SyntheticAttribute, List<String>> getAttrValues() {
 		return attrValues;
 	}
-
-	/**
-	 * @return for each attribute name, its error rate
-	 */
-	public Map<String, Double> getAttributeErrorRate() {
-		return attributeErrorRate;
-	}	
 }

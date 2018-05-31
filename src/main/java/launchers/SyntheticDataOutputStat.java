@@ -3,6 +3,8 @@ package launchers;
 import java.util.List;
 import java.util.Map;
 
+import model.SyntheticAttribute;
+
 /**
  * Class that provides some stats on results of synthetic dataset generator, as
  * well as some information on dataset not present in Mongo (TODO should we fix
@@ -14,14 +16,14 @@ import java.util.Map;
 public class SyntheticDataOutputStat {
 
 	private List<String> sourcesByLinkage;
-	private Map<String, Integer> attrLinkage;
+	private Map<SyntheticAttribute, Integer> attrLinkage;
 	private long catalogueTime;
 	private long datasetTime;
 	private long totalTime;
 	private int catalogueSize;
 	private int datasetSize;
 	
-	public SyntheticDataOutputStat(List<String> sourcesByLinkage, Map<String, Integer> attrLinkage, long catalogueTime,
+	public SyntheticDataOutputStat(List<String> sourcesByLinkage, Map<SyntheticAttribute, Integer> attrLinkage, long catalogueTime,
 			long datasetTime, long totalTime, int catalogueSize, int datasetSize) {
 		super();
 		this.sourcesByLinkage = sourcesByLinkage;
@@ -57,7 +59,7 @@ public class SyntheticDataOutputStat {
 		return sourcesByLinkage;
 	}
 	
-	public Map<String, Integer> getAttrLinkage() {
+	public Map<SyntheticAttribute, Integer> getAttrLinkage() {
 		return attrLinkage;
 	}
 	

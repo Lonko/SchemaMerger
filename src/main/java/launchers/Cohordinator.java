@@ -1,18 +1,18 @@
 package launchers;
 
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import matcher.DynamicCombinationsCalculator;
 import model.Source;
+import model.SyntheticAttribute;
 import models.generator.LaunchConfiguration;
-import models.matcher.Schema;
 import models.matcher.EvaluationMetrics;
+import models.matcher.Schema;
+import utils.EvaluationUtils;
 
 /**
  * Launch controller for Agrawal.
@@ -45,15 +45,15 @@ public class Cohordinator {
 		SyntheticDatasetGenerator sdg = SyntheticDatasetGenerator.sdgBuilder(lc);
 		System.out.println("INIZIO GENERAZIONE DATASET SINTETICO");
 		SyntheticDataOutputStat sdo = sdg.generateSyntheticData(true);
-		System.out.println("FINE, statistiche: "+sdo.toString());
+		System.out.println("FINE, statistiche: " + sdo.toString());
 		System.out.println("INIZIO ALLINEAMENTO");
-		Schema schema = algorithm.launchAlgorithmOnSyntheticDataset(sdo);
+		Schema schema = algorithm.launchAlgorithmOnSyntheticDataset(sdo.getSourcesByLinkage());
 
 		// Result Evaluation
 		System.out.println("INIZIO VALUTAZIONE RISULTATI");
 		List<List<String>> clusters = schema.schema2Clusters();
-		Map<String, Integer> sizes = sdo.getAttrLinkage();
-		//FIXME move to configuration
+		Map<SyntheticAttribute, Integer> sizes = sdo.getAttrLinkage();
+		// FIXME move to configuration
 		if (DatasetAlignmentAlgorithm.WITH_REFERENCE) {
 			clusters = clusters.stream().filter(cluster -> {
 				boolean hasValidAttribute = false;
@@ -67,46 +67,49 @@ public class Cohordinator {
 				return hasValidAttribute;
 			}).collect(Collectors.toList());
 			String category = lc.getConf().getCategories().get(0);
-			List<String> validAttributes = algorithm.getDao()
-					.getSingleSchema(new Source(category, schema.getSourceCatalogueName()));
+			List<SyntheticAttribute> validAttributes = algorithm.getDao()
+					.getSingleSchema(new Source(category, schema.getSourceCatalogueName())).stream()
+					.map(attr -> SyntheticAttribute.parseAttribute(attr)).collect(Collectors.toList());
 			sizes.keySet().retainAll(validAttributes);
 		}
-		EvaluationMetrics evaluateSyntheticResults = evaluateSyntheticResults(clusters, sizes);
-		System.out.println(evaluateSyntheticResults.toString());
+		evaluateSyntheticResults(clusters, sizes);
+	}
+
+	/**
+	 * Evaluate synthetic results according to several categories (
+	 * @param clusters
+	 * @param expectedClusterSizes
+	 */
+	public static void evaluateSyntheticResults(List<List<String>> clusters,
+			Map<SyntheticAttribute, Integer> expectedClusterSizes) {
+		//Attributes in clusters contain their source name, so we remove it (it is not included in expectedClusterSizes)
+		
+		List<List<SyntheticAttribute>> clustersWithoutSourceName = clusters.stream().map(listSources -> 
+			listSources.stream().
+				map(sa -> SyntheticAttribute.parseAttribute(sa.split("###")[0]))
+				.collect(Collectors.toList())).collect(Collectors.toList());
+		
+		Map<String, EvaluationMetrics> evaluate = EvaluationUtils.evaluate(clustersWithoutSourceName, expectedClusterSizes, CATEGORY2FUNCTION);
+		System.out.println(evaluate.toString());
 		System.out.println("FINE VALUTAZIONE RISULTATI");
 	}
-	
-	public static EvaluationMetrics evaluateSyntheticResults(List<List<String>> clusters,
-			Map<String, Integer> expectedClusterSizes) {
-		DynamicCombinationsCalculator dcc = new DynamicCombinationsCalculator();
-		int truePositives = 0, falsePositives = 0, expectedPositives = 0;
-		double p, r;
 
-		// calculate expected positives
-		for (int clusterSize : expectedClusterSizes.values())
-			// cluster of cardinality == 1 are not considered
-			if (clusterSize > 1)
-				expectedPositives += dcc.calculateCombinations(clusterSize, 2);
-
-		// calculate true and false positives
-		for (List<String> cluster : clusters) {
-			int size = cluster.size();
-			// cluster of cardinality == 1 are not considered
-			if (size > 1) {
-				Collection<Long> cCollection = cluster.stream().map(attr -> attr.split("###")[0])
-						.collect(Collectors.groupingBy(Function.identity(), Collectors.counting())).values();
-				List<Long> counters = new ArrayList<>(cCollection);
-				// true positives
-				int truePositivesCluster = counters.stream().mapToInt(Long::intValue)
-						.map(c -> dcc.calculateCombinations(c, 2)).sum();
-				truePositives += truePositivesCluster;
-				// false positives
-				falsePositives += dcc.calculateCombinations(size, 2) - truePositivesCluster;
-			}
+	/**
+	 * This is the map containing the categories for evaluation. For each category
+	 * an {@link EvaluationMetrics} will be produced
+	 */
+	@SuppressWarnings("serial")
+	public static final Map<String, Function<SyntheticAttribute, Boolean>> CATEGORY2FUNCTION = new HashMap<String, Function<SyntheticAttribute, Boolean>>() {
+		{
+			put("cardinality2", elem -> elem.getCardinality() == 2);
+			put("cardinality3", elem -> elem.getCardinality() == 3);
+			put("cardinality4-10", elem -> 4 <= elem.getCardinality() && elem.getCardinality() <= 10);
+			put("cardinality10+", elem -> 4 <= elem.getCardinality() && elem.getCardinality() <= 10);
+			put("HEAD attributes", elem -> elem.isHead());
+			put("TAIL attributes", elem -> !elem.isHead());
+			put("Error rate <0.1", elem -> elem.getErrorRate() < 0.1);
+			put("Error rate >=0.1", elem -> elem.getErrorRate() >= 0.1);
 		}
-		int computedPositives = truePositives + falsePositives;
-		p = computedPositives == 0 ? 1 : truePositives / (double) computedPositives;
-		r = expectedPositives == 0 ? 1 : truePositives / (double) (expectedPositives);
-		return new EvaluationMetrics(p, r);
-	}
+	};
+
 }

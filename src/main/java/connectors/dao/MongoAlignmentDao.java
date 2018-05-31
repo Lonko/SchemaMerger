@@ -24,6 +24,7 @@ import com.mongodb.client.model.Projections;
 
 import connectors.MongoDbConnectionFactory;
 import connectors.MongoDbUtils;
+import model.AbstractProductPage.Specifications;
 import model.Source;
 import model.SourceProductPage;
 
@@ -212,12 +213,12 @@ public class MongoAlignmentDao implements AlignmentDao {
 	}
 
 	@Override
-	public List<Entry<SourceProductPage, SourceProductPage>> getProdsInRL(List<SourceProductPage> prods, String website,
+	public List<Entry<Specifications, SourceProductPage>> getProdsInRL(List<SourceProductPage> prods, String website,
 			String attribute) {
 		Map<String, List<Integer>> rlMap = new HashMap<>();
 		List<String> docsToFetch = new ArrayList<>();
 		List<SourceProductPage> fetchedProducts = new ArrayList<>();
-		List<Entry<SourceProductPage, SourceProductPage>> rlList = new ArrayList<>();
+		List<Entry<Specifications, SourceProductPage>> rlList = new ArrayList<>();
 
 		// get urls of the linkage products
 		for (int i = 0; i < prods.size(); i++) {
@@ -243,7 +244,7 @@ public class MongoAlignmentDao implements AlignmentDao {
 		fetchedProducts.stream().forEach(d -> {
 			List<Integer> indexes = rlMap.get(d.getUrl());
 			for (int i : indexes)
-				rlList.add(new AbstractMap.SimpleEntry<>(prods.get(i), d));
+				rlList.add(new AbstractMap.SimpleEntry<>(prods.get(i).getSpecifications(), d));
 		});
 		return rlList;
 	}

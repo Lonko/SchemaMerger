@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 
 import connectors.dao.AlignmentDao;
 import me.tongfei.progressbar.ProgressBar;
+import model.AbstractProductPage.Specifications;
 import model.Source;
 import model.SourceProductPage;
 import models.matcher.BagsOfWordsManager;
@@ -232,7 +233,7 @@ public class TrainingSetGenerator {
 			String attribute1, String website2, List<SourceProductPage> subProds,
 			Map<String, List<SourceProductPage>> w1_subProds, Entry<String, List<Tuple>> a2_tuple) {
 		// Here we deal with tuple for a specific a1, a2 and w2, and all possible W1s.
-		List<Entry<SourceProductPage, SourceProductPage>> cList2 = this.dao.getProdsInRL(subProds, website2,
+		List<Entry<Specifications, SourceProductPage>> cList2 = this.dao.getProdsInRL(subProds, website2,
 				a2_tuple.getKey());
 		List<String> websites1 = a2_tuple.getValue().stream().map(t -> t.getWebsite1()).distinct()
 				.collect(Collectors.toList());
@@ -240,10 +241,10 @@ public class TrainingSetGenerator {
 			// pb.step();
 			Features feature = new Features();
 			List<SourceProductPage> subProds_of_w1 = w1_subProds.getOrDefault(website1, new ArrayList<>());
-			List<Entry<SourceProductPage, SourceProductPage>> sList2 = this.dao.getProdsInRL(subProds_of_w1, website2,
+			List<Entry<Specifications, SourceProductPage>> sList2 = this.dao.getProdsInRL(subProds_of_w1, website2,
 					a2_tuple.getKey());
 			try {
-				feature = computeFeatures(sList2, new ArrayList<Entry<SourceProductPage, SourceProductPage>>(), cList2,
+				feature = computeFeatures(sList2, new ArrayList<Entry<Specifications, SourceProductPage>>(), cList2,
 						attribute1, a2_tuple.getKey(), candidateType, useWebsite);
 				features.add(feature);
 			} catch (Exception e) {
@@ -253,9 +254,9 @@ public class TrainingSetGenerator {
 		}
 	}
 
-	private Features computeFeatures(List<Entry<SourceProductPage, SourceProductPage>> sList,
-			List<Entry<SourceProductPage, SourceProductPage>> wList,
-			List<Entry<SourceProductPage, SourceProductPage>> cList, String a1, String a2, double type,
+	private Features computeFeatures(List<Entry<Specifications, SourceProductPage>> sList,
+			List<Entry<Specifications, SourceProductPage>> wList,
+			List<Entry<Specifications, SourceProductPage>> cList, String a1, String a2, double type,
 			boolean useWebsite) {
 
 		Features features = new Features();

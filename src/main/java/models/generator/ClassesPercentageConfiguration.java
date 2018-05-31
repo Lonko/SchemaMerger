@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 import org.apache.commons.lang3.Validate;
 
@@ -17,7 +18,7 @@ import org.apache.commons.lang3.Validate;
  * 
  * @author federico
  *
- * @param <T>
+ * @param <T> type of attribute in class
  */
 public class ClassesPercentageConfiguration<T> {
 	private Map<T, Double> class2percentage;
@@ -36,18 +37,17 @@ public class ClassesPercentageConfiguration<T> {
 	 * <li>Attributes are aa,bb,cc,dd,ee
 	 * <li>Output: aa-A, bb-A, cc-B, dd-B, ee-C
 	 * </ul>
-	 * Note that there might be some approximation issues that we must address 
+	 * Note that there are some approximation issues that are addressed 
 	 * 
 	 * @param attrs
 	 * 
 	 * @return 
 	 */
-	public Map<String, T> assignClasses(List<String> attrs) {
+	public <Q> void assignClasses(List<Q> attrs, BiConsumer<Q, T> action) {
 		
-		Map<String, T> result = new HashMap<>();
-		List<String> shuffled = new ArrayList<>(attrs);
+		List<Q> shuffled = new ArrayList<>(attrs);
 		Collections.shuffle(shuffled);
-		Iterator<String> attributeIterator = shuffled.iterator();
+		Iterator<Q> attributeIterator = shuffled.iterator();
 		Iterator<Entry<T, Double>> classesIterator = this.class2percentage.entrySet().iterator();
 		while (classesIterator.hasNext()) {
 			Entry<T, Double> currentClass = classesIterator.next();
@@ -56,16 +56,26 @@ public class ClassesPercentageConfiguration<T> {
 			
 			//Last class may have  not enough attributes to affect (because of approximations), we then check the attribute iterator...
 			for (int i = 0; i < numberOfElementsInThisClass && attributeIterator.hasNext(); i++) {
-				result.put(attributeIterator.next(), currentClass.getKey());
+				action.accept(attributeIterator.next(), currentClass.getKey());
 			}
 			
-			//...or there may be some attributes still to assign, we affect it to last class
+			//...or there may be some attributes still to assign, we affect them to last class
 			if (!classesIterator.hasNext()) {
 				while(attributeIterator.hasNext()) {
-					result.put(attributeIterator.next(), currentClass.getKey());
+					action.accept(attributeIterator.next(), currentClass.getKey());
 				}
 			}
 		}
+	}
+	
+	/**
+	 * Assign attribute to classes using an external map
+	 * @param attrs
+	 * @return
+	 */
+	public Map<String, T> assignClasses(List<String> attrs) {
+		Map<String, T> result = new HashMap<>();
+		assignClasses(attrs, (attr, val) ->  result.put(attr, val) );
 		return result;
 	}
 

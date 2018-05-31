@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
 
+import model.AbstractProductPage.Specifications;
 import model.SourceProductPage;
 
 public class BagsOfWordsManager {
@@ -14,12 +15,12 @@ public class BagsOfWordsManager {
 	private List<String> sourceBagOfWords;
 
 	public BagsOfWordsManager(String aCatalog, String aSource,
-			List<Entry<SourceProductPage, SourceProductPage>> prods) {
+			List<Entry<Specifications, SourceProductPage>> prods) {
 		this.catalogBagOfWords = new ArrayList<>();
 		this.sourceBagOfWords = new ArrayList<>();
 
-		for (Entry<SourceProductPage, SourceProductPage> couple : prods) {
-			String[] wordsCatalog = couple.getKey().getSpecifications().get(aCatalog).split("( |(###))+");
+		for (Entry<Specifications, SourceProductPage> couple : prods) {
+			String[] wordsCatalog = couple.getKey().get(aCatalog).split("( |(###))+");
 			String[] wordsSource = couple.getValue().getSpecifications().get(aSource).split("( |(###))+");
 			catalogBagOfWords.addAll(Arrays.asList(wordsCatalog));
 			sourceBagOfWords.addAll(Arrays.asList(wordsSource));

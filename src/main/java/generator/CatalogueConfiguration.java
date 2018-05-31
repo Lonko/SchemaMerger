@@ -31,4 +31,6 @@ public interface CatalogueConfiguration {
 	
 	public ClassesPercentageConfiguration<Double> getAttributeRandomErrorClasses();
 
+	public CurveFunctionType getAttrCurveType();
+
 }

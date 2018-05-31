@@ -1,5 +1,7 @@
 package models.generator;
 
+import java.util.Scanner;
+
 /**
  * Classes of attribute's tokens configuration (in the form "random-fixed")
  * @author federico
@@ -48,5 +50,22 @@ public class TokenClass {
 		if (random != other.random)
 			return false;
 		return true;
+	}
+	
+	@Override
+	public String toString() {
+		return String.format("%d-%d", this.random, this.fixed);
+	}
+
+	/**
+	 * ToString inverse
+	 * @param next
+	 * @return
+	 */
+	public static TokenClass parseTokenClass(String stringRepr) {
+		try (Scanner scanner = new Scanner(stringRepr)){
+			scanner.useDelimiter("-");
+			return new TokenClass(scanner.nextInt(), scanner.nextInt());
+		}
 	}
 }

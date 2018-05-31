@@ -76,7 +76,7 @@ public class DatasetAlignmentAlgorithm {
 		this.config = config;
 	}
 	
-	public Schema launchAlgorithmOnSyntheticDataset(SyntheticDataOutputStat sdo) {
+	public Schema launchAlgorithmOnSyntheticDataset(List<String> sourcesByLinkage) {
 		try {
 			r.start();
 			List<String> categories = config.getCategories();
@@ -97,8 +97,7 @@ public class DatasetAlignmentAlgorithm {
 			// Classification
 			System.out.println("INIZIO GENERAZIONE SCHEMA");
 			CategoryMatcher cm = new CategoryMatcher(this.dao, r);
-			List<String> sources = sdo.getSourcesByLinkage();
-			Schema schema = launchClassification(sources, categories.get(0), cm, 0, true, WITH_REFERENCE);
+			Schema schema = launchClassification(sourcesByLinkage, categories.get(0), cm, 0, true, WITH_REFERENCE);
 			fdc.printMatchSchema("clusters", schema);
 			System.out.println("FINE GENERAZIONE SCHEMA");
 			return schema;

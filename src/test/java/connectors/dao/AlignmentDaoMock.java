@@ -10,6 +10,7 @@ import java.util.Map.Entry;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import model.AbstractProductPage.Specifications;
 import model.Source;
 import model.SourceProductPage;
 
@@ -73,18 +74,18 @@ public class AlignmentDaoMock implements AlignmentDao {
 	}
 
 	@Override
-	public List<Entry<SourceProductPage, SourceProductPage>> getProdsInRL(List<SourceProductPage> cList1,
+	public List<Entry<Specifications, SourceProductPage>> getProdsInRL(List<SourceProductPage> cList1,
 			String website2, String attribute2) {
 		System.out.printf("Called getProdsInRL with cList1 %s, website2 %s and attribute2 %s\n", cList1.toString(),
 				website2, attribute2);
 
-		List<Entry<SourceProductPage, SourceProductPage>> results = new LinkedList<>();
+		List<Entry<Specifications, SourceProductPage>> results = new LinkedList<>();
 		for (SourceProductPage spp : cList1) {
 			for (String url : spp.getLinkage()) {
 				if (url.contains(website2)) {
 					SourceProductPage spp_link = new SourceProductPage(spp.getSource().getCategory(), url, website2);
 					spp_link.addAttributeValue(attribute2, String.valueOf(val));
-					results.add(new AbstractMap.SimpleEntry<>(spp, spp_link));
+					results.add(new AbstractMap.SimpleEntry<>(spp.getSpecifications(), spp_link));
 				}
 				val++;
 			}

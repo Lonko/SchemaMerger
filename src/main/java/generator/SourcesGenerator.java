@@ -13,6 +13,7 @@ import java.util.Set;
 import connectors.dao.SyntheticDatasetDao;
 import model.CatalogueProductPage;
 import model.SourceProductPage;
+import model.SyntheticAttribute;
 import models.generator.Configurations.RecordLinkageErrorType;
 import models.generator.CurveFunction;
 import models.generator.CurveFunctionFactory;
@@ -34,12 +35,6 @@ public class SourcesGenerator {
 	private Map<String, List<Integer>> source2Ids = new HashMap<>();
 	// Map <id, Sources in which it appears>
 	private Map<Integer, List<String>> id2Sources = new HashMap<>();
-	// list of "head" attributes (in terms of number of sources in which they
-	// appear)
-	private List<String> headAttributes = new ArrayList<>();
-	// list of "tail" attributes (in terms of number of sources in which they
-	// appear)
-	private List<String> tailAttributes = new ArrayList<>();
 	
 	// Map of source name --> Error rates for that source (value, wrong linkage-missing linkage) 
 	private Map<String, Double> source2valueErrorRate;
@@ -49,62 +44,51 @@ public class SourcesGenerator {
 	 * Maps to replace by implementing Attribute objects
 	 */
 	// Map <Attribute, schema>
-	private Map<String, List<String>> schemas = new HashMap<>();
+	private Map<String, List<SyntheticAttribute>> schemas = new HashMap<>();
 	// Map <Attribute, linkage>
 
 	/**
 	 * Number of source attributes for each cluster (all correspondent attributes
 	 * have same name in synthetic, sot it can be used as map key)
 	 */
-	private Map<String, Integer> linkage = new HashMap<>();
+	private Map<SyntheticAttribute, Integer> linkage = new HashMap<>();
 	// Map <Attribute, fixed token>
-	private Map<String, String> fixedTokens = new HashMap<>();
+	private Map<SyntheticAttribute, String> fixedTokens = new HashMap<>();
 	// Map <Attribute, values>
-	private Map<String, List<String>> values = new HashMap<>();
+	private Map<SyntheticAttribute, List<String>> values = new HashMap<>();
 	private SourceGeneratorConfiguration conf;
-	private Map<String, Double> attrErrorRate;
 
 	public SourcesGenerator(SyntheticDatasetDao dao, SourceGeneratorConfiguration conf, StringGenerator sg, CurveFunction sizes,
-			CurveFunction prods, Map<String, String> fixedTokens, Map<String, List<String>> values, Map<String, Double> attrErrorRate) {
+			CurveFunction prods, CurveFunction attrsCurve, Map<SyntheticAttribute, String> fixedTokens, Map<SyntheticAttribute, List<String>> values) {
 		this.conf = conf;
 		this.dao = dao;
 		this.fixedTokens = fixedTokens;
 		this.values = values;
 		this.sourceSizes = sizes;
 		this.productLinkage = prods;
-		
-		this.aExtLinkageCurve = CurveFunctionFactory.buildCurveFunction(this.conf.getAttrCurveType(), this.conf.getSources(), 
-				conf.getAttributes(), 1);
-
+		this.aExtLinkageCurve = attrsCurve; 
 		this.stringGenerator = sg;
-		this.attrErrorRate = attrErrorRate;
 	}
 
 	// assigns attributes to each source
 	private void assignAttributes(List<String> sourcesNames) {
 		List<String> shuffledSources = new ArrayList<>(sourcesNames);
-		List<String> attributes = new ArrayList<>(this.fixedTokens.keySet());
+		List<SyntheticAttribute> attributes = new ArrayList<>(this.fixedTokens.keySet());
 		int[] attrLinkage = this.aExtLinkageCurve.getYValues();
-		int headThreshold = this.aExtLinkageCurve.getHeadThreshold();
 
 		// for each attribute
 		for (int i = 0; i < attributes.size(); i++) {
-			String attribute = attributes.get(i);
+			SyntheticAttribute attribute = attributes.get(i);
 			int linkage = attrLinkage[i];
 			Collections.shuffle(shuffledSources);
 			this.linkage.put(attribute, linkage);
-			// mark attribute as head or tail
-			if (i <= headThreshold)
-				this.headAttributes.add(attribute);
-			else
-				this.tailAttributes.add(attribute);
 			/*
 			 * add it to the schema of n random sources with n given by the yValue on the
 			 * curve for the external attribute linkage
 			 */
 			for (int j = 0; j < linkage; j++) {
 				String source = shuffledSources.get(j);
-				List<String> schema = this.schemas.getOrDefault(source, new ArrayList<String>());
+				List<SyntheticAttribute> schema = this.schemas.getOrDefault(source, new ArrayList<SyntheticAttribute>());
 				schema.add(attribute);
 				this.schemas.put(source, schema);
 			}
@@ -222,17 +206,16 @@ public class SourcesGenerator {
 
 	// selects a subset of attributes for the head and tail partitions of a
 	// source's schema
-	private List<String> getHeadAttributes(List<String> schema, CurveFunction curve) {
+	private List<SyntheticAttribute> getHeadAttributes(List<SyntheticAttribute> schema, CurveFunction curve) {
 		// internal head/tail attributes
-		List<String> headAttributes = new ArrayList<>();
-		List<String> tailAttributes = new ArrayList<>();
+		List<SyntheticAttribute> headAttributes = new ArrayList<>();
+		List<SyntheticAttribute> tailAttributes = new ArrayList<>();
 		int head = curve.getHeadThreshold();
 
 		// partition the attributes according to both internal and external
 		// linkage
-		for (String attribute : schema) {
-			boolean isHead = this.headAttributes.contains(attribute);
-			if (isHead)
+		for (SyntheticAttribute attribute : schema) {
+			if (attribute.isHead())
 				headAttributes.add(attribute);
 			else
 				tailAttributes.add(attribute);
@@ -240,7 +223,7 @@ public class SourcesGenerator {
 				break;
 		}
 		if (headAttributes.size() < head)
-			for (String attribute : tailAttributes) {
+			for (SyntheticAttribute attribute : tailAttributes) {
 				headAttributes.add(attribute);
 				if (headAttributes.size() == head)
 					break;
@@ -250,17 +233,17 @@ public class SourcesGenerator {
 	}
 
 	// assigns a subset of attributes to each prod in source
-	private Map<Integer, List<String>> getProdsAttrs(String source, List<String> schema, CurveFunction curve) {
-		List<String> headAttributes = getHeadAttributes(schema, curve);
-		List<String> tailAttributes = new ArrayList<>(schema);
+	private Map<Integer, List<SyntheticAttribute>> getProdsAttrs(String source, List<SyntheticAttribute> schema, CurveFunction curve) {
+		List<SyntheticAttribute> headAttributes = getHeadAttributes(schema, curve);
+		List<SyntheticAttribute> tailAttributes = new ArrayList<>(schema);
 		tailAttributes.removeAll(headAttributes);
 		int threshold = headAttributes.size();
 		List<Integer> shuffledIds = new ArrayList<>(this.source2Ids.get(source));
-		Map<Integer, List<String>> prodsAttrs = new HashMap<>();
+		Map<Integer, List<SyntheticAttribute>> prodsAttrs = new HashMap<>();
 
 		// for each attribute
 		for (int i = 0; i < schema.size(); i++) {
-			String attribute = "";
+			SyntheticAttribute attribute;
 			if (i < threshold)
 				attribute = headAttributes.get(i);
 			else
@@ -273,7 +256,7 @@ public class SourcesGenerator {
 			 */
 			for (int j = 0; j < linkage; j++) {
 				int id = shuffledIds.get(j);
-				List<String> attrs = prodsAttrs.getOrDefault(id, new ArrayList<String>());
+				List<SyntheticAttribute> attrs = prodsAttrs.getOrDefault(id, new ArrayList<SyntheticAttribute>());
 				attrs.add(attribute);
 				prodsAttrs.put(id, attrs);
 			}
@@ -287,11 +270,11 @@ public class SourcesGenerator {
 	 * random error, which is taken into consideration during the actual product
 	 * page creation
 	 */
-	private Map<String, String> checkErrors(List<String> schema) {
-		Map<String, String> errors = new HashMap<>();
+	private Map<SyntheticAttribute, String> checkErrors(List<SyntheticAttribute> schema) {
+		Map<SyntheticAttribute, String> errors = new HashMap<>();
 		Random rand = new Random();
 
-		for (String attribute : schema) {
+		for (SyntheticAttribute attribute : schema) {
 			double chance = rand.nextDouble();
 			if (chance <= this.conf.getDifferentFormatChance())
 				errors.put(attribute, "format");
@@ -305,10 +288,10 @@ public class SourcesGenerator {
 	}
 
 	// applies format error to attributes' values
-	private Map<String, List<String>> applyErrors(List<String> schema, Map<String, String> errors) {
-		Map<String, List<String>> fErrors = new HashMap<>();
+	private Map<SyntheticAttribute, List<String>> applyErrors(List<SyntheticAttribute> schema, Map<SyntheticAttribute, String> errors) {
+		Map<SyntheticAttribute, List<String>> fErrors = new HashMap<>();
 
-		for (String attribute : schema) {
+		for (SyntheticAttribute attribute : schema) {
 			// if the attribute has been assigned error type "format" or
 			// "representation"
 			if (errors.containsKey(attribute) && !errors.get(attribute).equals("none")) {
@@ -361,16 +344,17 @@ public class SourcesGenerator {
 	 * @param attrs
 	 */
 	private void addSpecsToProductPage(SourceProductPage page, Map<String, String> oldSpecs,
-			Map<String, List<String>> newValues, List<String> attrs) {
+			Map<SyntheticAttribute, List<String>> newValues, List<SyntheticAttribute> attrs) {
 		Random rand = new Random();
 		double errorRateForSource = this.source2valueErrorRate.get(page.getSource().getWebsite());
 
 		// check each attribute
-		for (String attribute : oldSpecs.keySet()) {
+		for (String attributeRepr : oldSpecs.keySet()) {
+			SyntheticAttribute attribute = SyntheticAttribute.parseAttribute(attributeRepr);
 			// continue if attribute has not been assigned to this product
 			if (!attrs.contains(attribute))
 				continue;
-			String oldValue = oldSpecs.get(attribute);
+			String oldValue = oldSpecs.get(attributeRepr);
 			String newValue = oldValue;
 			// get modified value (with error) if necessary
 			if (newValues.containsKey(attribute)) {
@@ -379,7 +363,7 @@ public class SourcesGenerator {
 			}
 			List<String> tokens = new ArrayList<>();
 			// random error
-			Double attributeErrorRate = this.attrErrorRate.get(attribute);
+			Double attributeErrorRate = attribute.getErrorRate();
 			double localErrorRateForValue = attributeErrorRate + errorRateForSource - attributeErrorRate * errorRateForSource;
 			for (String token : newValue.split(" ")) {
 				double chance = rand.nextDouble();
@@ -388,13 +372,13 @@ public class SourcesGenerator {
 				else
 					tokens.add(token);
 			}
-			page.addAttributeValue(attribute, String.join(" ", tokens));
+			page.addAttributeValue(attribute.toString(), String.join(" ", tokens));
 		}
 	}
 
 	// generates the products' pages for the source
-	private List<SourceProductPage> createProductsPages(String source, Map<String, List<String>> newValues,
-			Map<Integer, List<String>> pAttrs, List<CatalogueProductPage> products) {
+	private List<SourceProductPage> createProductsPages(String source, Map<SyntheticAttribute, List<String>> newValues,
+			Map<Integer, List<SyntheticAttribute>> pAttrs, List<CatalogueProductPage> products) {
 		List<SourceProductPage> prodPages = new ArrayList<>();
 		Random rnd = new Random();
 		double missingLinkageChanceForSource = this.source2missingLinkageRate.get(source);
@@ -402,7 +386,7 @@ public class SourcesGenerator {
 
 		for (CatalogueProductPage prod : products) {
 			int realIds = prod.getId();
-			List<String> attrs = pAttrs.get(realIds);
+			List<SyntheticAttribute> attrs = pAttrs.get(realIds);
 			String url = source + "/" + realIds + "/";
 			SourceProductPage page = new SourceProductPage(this.conf.getCategories().get(0), url, source);
 
@@ -509,11 +493,11 @@ public class SourcesGenerator {
 	 * @return
 	 */
 	private List<SourceProductPage> createSource(String sourceName, int size, List<CatalogueProductPage> products) {
-		List<String> schema = this.schemas.get(sourceName);
+		List<SyntheticAttribute> schema = this.schemas.get(sourceName);
 		CurveFunction aIntLinkage = CurveFunctionFactory.buildCurveFunction(CurveFunctionType.EXP, size, schema.size(), 1);
-		Map<Integer, List<String>> prodsAttrs = getProdsAttrs(sourceName, schema, aIntLinkage);
-		Map<String, String> attrErrors = checkErrors(schema);
-		Map<String, List<String>> newValues = applyErrors(schema, attrErrors);
+		Map<Integer, List<SyntheticAttribute>> prodsAttrs = getProdsAttrs(sourceName, schema, aIntLinkage);
+		Map<SyntheticAttribute, String> attrErrors = checkErrors(schema);
+		Map<SyntheticAttribute, List<String>> newValues = applyErrors(schema, attrErrors);
 		return createProductsPages(sourceName, newValues, prodsAttrs, products);
 	}
 
@@ -577,7 +561,7 @@ public class SourcesGenerator {
 	}
 
 	// generates the complete sources and returns attributes' linkage info
-	public Map<String, Integer> createSources(List<String> sourcesNames, boolean delete) {
+	public Map<SyntheticAttribute, Integer> createSources(List<String> sourcesNames, boolean delete) {
 		List<SourceProductPage> sourcePages;
 
 		// generates sources

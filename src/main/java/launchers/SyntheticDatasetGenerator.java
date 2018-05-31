@@ -13,6 +13,7 @@ import generator.RandomStringGenerator;
 import generator.SourcesGenerator;
 import generator.StringGenerator;
 import model.CatalogueProductPage;
+import model.SyntheticAttribute;
 import models.generator.Configurations;
 import models.generator.CurveFunction;
 import models.generator.LaunchConfiguration;
@@ -32,14 +33,14 @@ public class SyntheticDatasetGenerator {
 	private StringGenerator sg;
 	private CurveFunction sizes;
 	private CurveFunction prodLinkage;
-	private Map<String, String> attrFixedTokens;
-	private Map<String, List<String>> attrValues;
+	private Map<SyntheticAttribute, String> attrFixedTokens;
+	private Map<SyntheticAttribute, List<String>> attrValues;
 	private List<String> sourcesBySize;
 	private List<String> sourcesByLinkage;
 	/** @see #getAttrLinkage() */
-	private Map<String, Integer> attrLinkage;
+	private Map<SyntheticAttribute, Integer> attrLinkage;
 	private SyntheticDatasetDao catalogueDao;
-	private Map<String, Double> attrErrorRate;
+	private CurveFunction attributes;
 	
 	/**
 	 * Factory method for {@link SyntheticDatasetGenerator}
@@ -76,17 +77,17 @@ public class SyntheticDatasetGenerator {
 		CatalogueGenerator cg = new CatalogueGenerator(this.conf, this.sg);
 		List<CatalogueProductPage> catalogue = cg.createCatalogue();
 		this.catalogueDao.uploadCatalogue(catalogue, delete);
-		this.sizes = cg.getSizeCurve();
-		this.prodLinkage = cg.getProductLinkageCurve();
+		this.sizes = cg.getSources2nbPagesCurve();
+		this.prodLinkage = cg.getProduct2nbPagesInLinkageCurve();
+		this.attributes = cg.getAttribute2nbSourcesCurve();
 		this.attrFixedTokens = cg.getAttrFixedToken();
 		this.attrValues = cg.getAttrValues();
-		this.attrErrorRate = cg.getAttributeErrorRate();
 	}
 
 	// generate and upload sources
 	private void generateSources(boolean delete) {
-		SourcesGenerator sg = new SourcesGenerator(this.catalogueDao, this.conf, this.sg, this.sizes, this.prodLinkage,
-				this.attrFixedTokens, this.attrValues, this.attrErrorRate);
+		SourcesGenerator sg = new SourcesGenerator(this.catalogueDao, this.conf, this.sg, this.sizes, this.prodLinkage, this.attributes,
+				this.attrFixedTokens, this.attrValues);
 		this.sourcesBySize = sg.prepareSources();
 		this.attrLinkage = sg.createSources(this.sourcesBySize, delete);
 		this.sourcesByLinkage = sg.getLinkageOrder(this.sourcesBySize);

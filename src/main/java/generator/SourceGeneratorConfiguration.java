@@ -4,7 +4,6 @@ import java.util.List;
 
 import models.generator.ClassesPercentageConfiguration;
 import models.generator.Configurations.RecordLinkageErrorType;
-import models.generator.CurveFunctionFactory.CurveFunctionType;
 
 /**
  * Configuration for {@link SourcesGenerator}
@@ -13,8 +12,6 @@ import models.generator.CurveFunctionFactory.CurveFunctionType;
  *
  */
 public interface SourceGeneratorConfiguration {
-
-	public CurveFunctionType getAttrCurveType();
 
 	public 	int getSources();
 

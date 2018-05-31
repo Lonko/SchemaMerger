@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import model.AbstractProductPage.Specifications;
 import model.Source;
 import model.SourceProductPage;
 
@@ -65,7 +66,7 @@ public interface AlignmentDao {
 	 */
 	public List<SourceProductPage> getProds(String category, String website1, String website2, String attribute1);
 
-	public List<Entry<SourceProductPage, SourceProductPage>> getProdsInRL(List<SourceProductPage> cList1,
+	public List<Entry<Specifications, SourceProductPage>> getProdsInRL(List<SourceProductPage> cList1,
 			String website2, String attribute2);
 
 	public SourceProductPage getIfValid(String url);

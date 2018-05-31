@@ -75,7 +75,7 @@ public class CategoryMatcher {
 		// check if new source is matchable
 		if (checkIfValidWebsite(newSource, linkageMap.keySet())) {
 			// pages in catalog(merged) -> linked page
-			List<Entry<SourceProductPage, SourceProductPage>> linkedProds = setupCatalog(linkageMap, schemaMatch);
+			List<Entry<Specifications, SourceProductPage>> linkedProds = setupCatalog(linkageMap, schemaMatch);
 
 			// Inverted indexes (attribute name -> indexes of prods)
 			InvertedIndexesManager invIndexes = getInvertedIndexes(linkedProds, newSource);
@@ -115,28 +115,33 @@ public class CategoryMatcher {
 		return foundSourcePage;
 	}
 
-	// update all products pages' attribute names and merges catalog prods in
-	// linkageS
-	private List<Entry<SourceProductPage, SourceProductPage>> setupCatalog(
+	/**
+	 * Update all products pages' attribute names and merges catalog prods in linkageS
+	 * 
+	 * @param prods
+	 * @param schema
+	 * @return
+	 */
+	private List<Entry<Specifications, SourceProductPage>> setupCatalog(
 			Map<SourceProductPage, List<SourceProductPage>> prods, Schema schema) {
 		return setupCatalog(prods, schema, "");
 	}
 
-	private List<Entry<SourceProductPage, SourceProductPage>> setupCatalog(
+	private List<Entry<Specifications, SourceProductPage>> setupCatalog(
 			Map<SourceProductPage, List<SourceProductPage>> prods, Schema schema, String reference) {
-		List<Entry<SourceProductPage, SourceProductPage>> updatedList = new LinkedList<Entry<SourceProductPage, SourceProductPage>>();
+		List<Entry<Specifications, SourceProductPage>> updatedList = new LinkedList<Entry<Specifications, SourceProductPage>>();
 
 		for (Map.Entry<SourceProductPage, List<SourceProductPage>> linkage : prods.entrySet()) {
 			SourceProductPage sourcePage = linkage.getKey();
-			SourceProductPage specList = mergeProducts(linkage.getValue(), schema, reference);
+			Specifications specList = mergeProducts(linkage.getValue(), schema, reference);
 			updateSpecs(sourcePage, schema);
-			updatedList.add(new AbstractMap.SimpleEntry<SourceProductPage, SourceProductPage>(specList, sourcePage));
+			updatedList.add(new AbstractMap.SimpleEntry<Specifications, SourceProductPage>(specList, sourcePage));
 		}
 
 		return updatedList;
 	}
 
-	private SourceProductPage mergeProducts(List<SourceProductPage> prods, Schema schema, String reference) {
+	private Specifications mergeProducts(List<SourceProductPage> prods, Schema schema, String reference) {
 		// update the attribute names according to the existing schema
 		prods.forEach(p -> updateSpecs(p, schema));
 		Specifications newSpecs = new Specifications();
@@ -158,10 +163,7 @@ public class CategoryMatcher {
 				}
 			}
 
-		// FIXME spec or sourceProductPage??
-		SourceProductPage spp = new SourceProductPage(null, null, null);
-		spp.getSpecifications().putAll(newSpecs);
-		return spp;
+		return newSpecs;
 	}
 
 	// update attribute names of a single product page
@@ -187,7 +189,7 @@ public class CategoryMatcher {
 		specifications.putAll(newSpecs);
 	}
 
-	private InvertedIndexesManager getInvertedIndexes(List<Entry<SourceProductPage, SourceProductPage>> prods,
+	private InvertedIndexesManager getInvertedIndexes(List<Entry<Specifications, SourceProductPage>> prods,
 			String website) {
 		Map<String, Set<Integer>> invIndCatalog = new HashMap<>();
 		Map<String, Set<Integer>> invIndLinked = new HashMap<>();
@@ -195,9 +197,9 @@ public class CategoryMatcher {
 
 		// check all linked product pages
 		for (int i = 0; i < prods.size(); i++) {
-			Entry<SourceProductPage, SourceProductPage> pair = prods.get(i);
+			Entry<Specifications, SourceProductPage> pair = prods.get(i);
 			// get the attributes present in those 2 pages
-			Set<String> attrsCatalog = pair.getKey().getSpecifications().keySet();
+			Set<String> attrsCatalog = pair.getKey().keySet();
 			Set<String> attrsLinked = pair.getValue().getSpecifications().keySet();
 			// check the website of the linked page
 			boolean isInSource = pair.getValue().getSource().getWebsite().equals(website);
@@ -232,7 +234,7 @@ public class CategoryMatcher {
 		return invIndexes;
 	}
 
-	private DataFrame computeAttributesFeatures(List<Entry<SourceProductPage, SourceProductPage>> linkedProds,
+	private DataFrame computeAttributesFeatures(List<Entry<Specifications, SourceProductPage>> linkedProds,
 			InvertedIndexesManager invIndexes, int cardinality, String website, Map<String, Integer> attributesLinkage,
 			boolean useMI) {
 
@@ -256,7 +258,7 @@ public class CategoryMatcher {
 				Set<Integer> commonProdsL = new HashSet<>(invIndexes.getLinkedIndex().get(aSource));
 				commonProdsL.retainAll(attrCatalog.getValue());
 
-				List<Entry<SourceProductPage, SourceProductPage>> linkageS = new ArrayList<>();
+				List<Entry<Specifications, SourceProductPage>> linkageS = new ArrayList<>();
 				commonProdsS.forEach(i -> linkageS.add(linkedProds.get(i)));
 				// <------>
 				// DA SISTEMARE ORA CHE GLI ATTRIBUTI SONO GESTITI
@@ -268,7 +270,7 @@ public class CategoryMatcher {
 				// if(aSource.equals(aCatalog))
 				// attrSet.add(aSource);
 				// <------>
-				List<Entry<SourceProductPage, SourceProductPage>> linkageL = new ArrayList<>();
+				List<Entry<Specifications, SourceProductPage>> linkageL = new ArrayList<>();
 				commonProdsL.forEach(i -> linkageL.add(linkedProds.get(i)));
 
 				attributesLinkage.put(aSource + aCatalog, linkageS.size());
@@ -291,8 +293,8 @@ public class CategoryMatcher {
 	// }
 	// }
 
-	public Features computeFeatures(List<Entry<SourceProductPage, SourceProductPage>> sList,
-			List<Entry<SourceProductPage, SourceProductPage>> cList, String a1, String a2, boolean useMI) {
+	public Features computeFeatures(List<Entry<Specifications, SourceProductPage>> sList,
+			List<Entry<Specifications, SourceProductPage>> cList, String a1, String a2, boolean useMI) {
 
 		Features features = new Features();
 		BagsOfWordsManager sBags = new BagsOfWordsManager(a1, a2, sList);
@@ -474,7 +476,7 @@ public class CategoryMatcher {
 				schema.getAttributesMap().put(sourceAttr, sourceAttr);
 	}
 
-	public static void main(String[] args) {
+//	public static void main(String[] args) {
 		// FileDataConnector fdc = new FileDataConnector();
 		// MongoDBConnector mdbc = new MongoDBConnector(fdc);
 		// CategoryMatcher cm = new CategoryMatcher(mdbc);
@@ -495,5 +497,5 @@ public class CategoryMatcher {
 		// list.add(prod2);
 		// System.out.println(cm.mergeProducts(list, schema).get("spec",
 		// Document.class));
-	}
+//	}
 }

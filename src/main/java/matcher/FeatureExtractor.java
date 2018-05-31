@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import model.AbstractProductPage.Specifications;
 import model.SourceProductPage;
 import models.matcher.BagsOfWordsManager;
 
@@ -83,7 +84,7 @@ public class FeatureExtractor {
 	}
 
 	// Mutual Information
-	public double getMI(List<Entry<SourceProductPage, SourceProductPage>> prods, String a1, String a2) {
+	public double getMI(List<Entry<Specifications, SourceProductPage>> prods, String a1, String a2) {
 		// TODO is it OK?
 		if (prods.isEmpty()) {
 			return 0;
@@ -130,13 +131,13 @@ public class FeatureExtractor {
 		return margProb;
 	}
 
-	private double[][] getJointProbDistr(List<Entry<SourceProductPage, SourceProductPage>> prods, String a1, String a2,
+	private double[][] getJointProbDistr(List<Entry<Specifications, SourceProductPage>> prods, String a1, String a2,
 			List<String> distinctValues1, List<String> distinctValues2) {
 
 		int n = 0;
 		double[][] matrix = new double[distinctValues1.size()][distinctValues2.size()];
-		for (Entry<SourceProductPage, SourceProductPage> couple : prods) {
-			String value1 = couple.getKey().getSpecifications().get(a1);
+		for (Entry<Specifications, SourceProductPage> couple : prods) {
+			String value1 = couple.getKey().get(a1);
 			String value2 = couple.getValue().getSpecifications().get(a2);
 			if (value1 == null || value2 == null) // shouldn't happen anyway
 				continue;
@@ -156,14 +157,14 @@ public class FeatureExtractor {
 		return matrix;
 	}
 
-	private List<List<String>> getDistinctValues(List<Entry<SourceProductPage, SourceProductPage>> prods, String a1,
+	private List<List<String>> getDistinctValues(List<Entry<Specifications, SourceProductPage>> prods, String a1,
 			String a2) {
 		List<List<String>> distValues = new ArrayList<>();
 		Set<String> values1 = new HashSet<>();
 		Set<String> values2 = new HashSet<>();
 
-		for (Entry<SourceProductPage, SourceProductPage> couple : prods) {
-			String[] value1 = couple.getKey().getSpecifications().get(a1).split("###");
+		for (Entry<Specifications, SourceProductPage> couple : prods) {
+			String[] value1 = couple.getKey().get(a1).split("###");
 			String[] value2 = couple.getValue().getSpecifications().get(a2).split("###");
 			// if(a1.equals("Ethernet:") && a2.equals("Wi-Fi:"))
 			// System.out.println(value1+"\t"+value2);
@@ -185,21 +186,21 @@ public class FeatureExtractor {
 		// Map<String, List<String[]>> sample = cm.getTrainingSet();
 		// cm.getTrainingSet();
 		FeatureExtractor fe = new FeatureExtractor();
-		List<Entry<SourceProductPage, SourceProductPage>> docs = new ArrayList<>();
+		List<Entry<Specifications, SourceProductPage>> docs = new ArrayList<>();
 		String a1 = "a1";
 		String a2 = "a2";
-		SourceProductPage d1 = new SourceProductPage(null, null, null);
-		d1.addAttributeValue("a1", "A");
-		SourceProductPage d2 = new SourceProductPage(null, null, null);
-		d2.addAttributeValue("a1", "A");
-		SourceProductPage d3 = new SourceProductPage(null, null, null);
-		d3.addAttributeValue("a1", "C");
-		SourceProductPage d4 = new SourceProductPage(null, null, null);
-		d4.addAttributeValue("a1", "C");
-		SourceProductPage d5 = new SourceProductPage(null, null, null);
-		d5.addAttributeValue("a1", "E");
-		SourceProductPage d6 = new SourceProductPage(null, null, null);
-		d6.addAttributeValue("a1", "E###F");
+		Specifications d1 = new Specifications();
+		d1.put("a1", "A");
+		Specifications d2 =  new Specifications();
+		d2.put("a1", "A");
+		Specifications d3 =  new Specifications();
+		d3.put("a1", "C");
+		Specifications d4 = new Specifications();
+		d4.put("a1", "C");
+		Specifications d5 = new Specifications();
+		d5.put("a1", "E");
+		Specifications d6 = new Specifications();
+		d6.put("a1", "E###F");
 		SourceProductPage d7 = new SourceProductPage(null, null, null);
 		d7.addAttributeValue("a2", "A");
 		SourceProductPage d8 = new SourceProductPage(null, null, null);
