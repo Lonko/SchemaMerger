@@ -54,6 +54,7 @@ public class Cohordinator {
 		List<List<String>> clusters = schema.schema2Clusters();
 		Map<SyntheticAttribute, Integer> sizes = sdo.getAttrLinkage();
 		// FIXME move to configuration
+		//If WITHREFERENCE is true, I keep only clusters with at least one source attribute pertaining to the first source (considered as catalog) 
 		if (DatasetAlignmentAlgorithm.WITH_REFERENCE) {
 			clusters = clusters.stream().filter(cluster -> {
 				boolean hasValidAttribute = false;

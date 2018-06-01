@@ -16,6 +16,12 @@ public class Tuple {
 		this.category = category;
 	}
 
+	/**
+	 * TODO riformulare
+	 * Produce a negative example, i.e. 2 different attributes from 2 pages, from this object that should be a positive example between the 2 pages
+	 * @param t
+	 * @return
+	 */
 	public Tuple getMixedTuple(Tuple t) {
 		String a1 = this.getAttribute1();
 		String a2 = t.getAttribute2();

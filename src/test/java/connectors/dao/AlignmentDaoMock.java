@@ -21,7 +21,7 @@ public class AlignmentDaoMock implements AlignmentDao {
 	private int val = 0; // value of attributes, not constant but deterministic
 
 	@Override
-	public List<SourceProductPage> getRLSample(int size, String category) {
+	public List<SourceProductPage> getSamplePagesFromCategory(int size, String category) {
 		System.out.printf("Called getRLSample with size %d and category %s\n", size, category);
 		return buildProdList(size, category, MOCKED_WEBSITE1, null, null);
 	}
@@ -67,14 +67,14 @@ public class AlignmentDaoMock implements AlignmentDao {
 	}
 
 	@Override
-	public List<SourceProductPage> getProds(String category, String website1, String website2, String attribute1) {
+	public List<SourceProductPage> getPagesOutsideCatalogInLinkageWithPagesInside(String category, String website1, String website2, String attribute1) {
 		System.out.printf("Called getProds with category %s and website1 %s and website2 %s and attribute1 %s\n",
 				category, website1, website2, attribute1);
 		return buildProdList(5, category, website1, website2, attribute1);
 	}
 
 	@Override
-	public List<Entry<Specifications, SourceProductPage>> getProdsInRL(List<SourceProductPage> cList1,
+	public List<Entry<Specifications, SourceProductPage>> getPairsOfPagesInLinkage(List<SourceProductPage> cList1,
 			String website2, String attribute2) {
 		System.out.printf("Called getProdsInRL with cList1 %s, website2 %s and attribute2 %s\n", cList1.toString(),
 				website2, attribute2);
@@ -94,7 +94,7 @@ public class AlignmentDaoMock implements AlignmentDao {
 	}
 
 	@Override
-	public SourceProductPage getIfValid(String url) {
+	public SourceProductPage getPageFromUrlIfExistsInDataset(String url) {
 		System.out.printf("Called getIfValid with url %s\n", url);
 		return null;
 	}

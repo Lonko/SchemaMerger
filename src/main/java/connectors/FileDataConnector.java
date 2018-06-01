@@ -157,7 +157,7 @@ public class FileDataConnector {
 	}
 
 	public void printTrainingSet(String tsName, double[][] trainingSet) {
-		String header = "JSDs,JSDw,JSDc,JCs,JCw,JCc,MIs,MIw,MIc,Match";
+		String header = "JSDs,JSDc,JCs,JCc,MIs,MIc,Match";
 		List<String> lines = new ArrayList<>();
 
 		for (double[] row : trainingSet) {
@@ -175,12 +175,12 @@ public class FileDataConnector {
 
 	public void printTrainingSet(String tsName, List<String> trainingSet) {
 		String header = "Attribute1,Attribute2,Website1,Website2,Category,"
-				+ "JSDs,JSDw,JSDc,JCs,JCw,JCc,MIs,MIw,MIc,Match";
+				+ "JSDs,JSDc,JCs,JCc,MIs,MIc,Match";
 		printCSV(tsName, trainingSet, header);
 	}
 
 	public void printDataFrame(String dfName, List<String> dataFrame) {
-		String header = "AttributeSource,AttributeCatalog,JSDs,JSDw,JSDc,JCs,JCw,JCc,MIs,MIw,MIc,Match";
+		String header = "AttributeSource,AttributeCatalog,JSDs,JSDc,JCs,JCc,MIs,MIc,Match";
 		printCSV(dfName, dataFrame, header);
 	}
 

@@ -68,16 +68,16 @@ public class CategoryMatcher {
 	public boolean getMatch(List<String> websites, String category, int cardinality, Schema schemaMatch, boolean useMI,
 			boolean matchToOne) {
 		boolean matched = false;
-		// last website is the one to be matched with the catalog
+		// LAST website is the one to be matched with the catalog
 		String newSource = websites.remove(websites.size() - 1);
 		// linked page -> pages in catalog
 		Map<SourceProductPage, List<SourceProductPage>> linkageMap = this.dao.getProdsInRL(websites, category);
 		// check if new source is matchable
 		if (checkIfValidWebsite(newSource, linkageMap.keySet())) {
-			// pages in catalog(merged) -> linked page
+			// specifications in catalog(merged) -> linked page (adding to attribute name the name of website, [att_name###website])
 			List<Entry<Specifications, SourceProductPage>> linkedProds = setupCatalog(linkageMap, schemaMatch);
 
-			// Inverted indexes (attribute name -> indexes of prods)
+			// Inverted indexes (attribute name -> indexes of linked pages outside catalog)
 			InvertedIndexesManager invIndexes = getInvertedIndexes(linkedProds, newSource);
 
 			Map<String, Integer> attributesLinkage = new HashMap<>();
@@ -100,8 +100,12 @@ public class CategoryMatcher {
 		return matched;
 	}
 
-	// check if among the linked pages there's at least one belonging to the new
-	// website
+	/**
+	 * check if among the linked pages there's at least one belonging to the new website, otherwise it is useless to add it
+	 * @param website
+	 * @param linkedPages
+	 * @return
+	 */
 	boolean checkIfValidWebsite(String website, Set<SourceProductPage> linkedPages) {
 		boolean foundSourcePage = false;
 
@@ -133,7 +137,7 @@ public class CategoryMatcher {
 
 		for (Map.Entry<SourceProductPage, List<SourceProductPage>> linkage : prods.entrySet()) {
 			SourceProductPage sourcePage = linkage.getKey();
-			Specifications specList = mergeProducts(linkage.getValue(), schema, reference);
+			Specifications specList = mergeAttributeInPages(linkage.getValue(), schema, reference);
 			updateSpecs(sourcePage, schema);
 			updatedList.add(new AbstractMap.SimpleEntry<Specifications, SourceProductPage>(specList, sourcePage));
 		}
@@ -141,21 +145,28 @@ public class CategoryMatcher {
 		return updatedList;
 	}
 
-	private Specifications mergeProducts(List<SourceProductPage> prods, Schema schema, String reference) {
+	/**
+	 * Joins all the attributes, and for each group of attributes matched, joins all the values and keep only 1 name (the one found in first analyzed source)
+	 * @param prods
+	 * @param schema
+	 * @param reference
+	 * @return
+	 */
+	private Specifications mergeAttributeInPages(List<SourceProductPage> prods, Schema schema, String reference) {
 		// update the attribute names according to the existing schema
 		prods.forEach(p -> updateSpecs(p, schema));
 		Specifications newSpecs = new Specifications();
 
 		for (SourceProductPage p : prods)
-			for (Entry<String, String> attr2vlaue : p.getSpecifications().entrySet()) {
+			for (Entry<String, String> attr2value : p.getSpecifications().entrySet()) {
 				/*
 				 * if reference is an empty string add all attributes if it contains a source
 				 * name, only add the attributes that can be found in it
 				 */
-				String attr = attr2vlaue.getKey();
+				String attr = attr2value.getKey();
 				if (reference.equals("") || attr.contains(reference)) {
 					String oldValue = (String) newSpecs.getOrDefault(attr, "");
-					String newValue = attr2vlaue.getValue();
+					String newValue = attr2value.getValue();
 					if (oldValue.length() > 0) // there was already a value for that attr
 						newSpecs.put(attr, oldValue + "###" + newValue);
 					else
@@ -244,38 +255,29 @@ public class CategoryMatcher {
 		// scorri il prod cartesiano di attributiS x attributiC
 		for (Map.Entry<String, Set<Integer>> attrS : invIndexes.getSourceIndex().entrySet())
 			for (Map.Entry<String, Set<Integer>> attrCatalog : invIndexes.getCatalogIndex().entrySet()) {
-				String aCatalog = attrCatalog.getKey();
-				String aSource = attrS.getKey();
+				String attributeCatalog = attrCatalog.getKey();
+				String attributeSource = attrS.getKey();
 
 				// prods in linkage between S and Catalog with the required
 				// attributes
-				Set<Integer> commonProdsS = new HashSet<>(attrS.getValue());
-				commonProdsS.retainAll(attrCatalog.getValue());
-				if (commonProdsS.size() < 1)
+				Set<Integer> commonPagesS = new HashSet<>(attrS.getValue());
+				commonPagesS.retainAll(attrCatalog.getValue());
+				if (commonPagesS.size() < 1)
 					continue;
 				// prods in linkage between the whole category and Catalog with
 				// the required attributes
-				Set<Integer> commonProdsL = new HashSet<>(invIndexes.getLinkedIndex().get(aSource));
+				Set<Integer> commonProdsL = new HashSet<>(invIndexes.getLinkedIndex().get(attributeSource));
 				commonProdsL.retainAll(attrCatalog.getValue());
 
 				List<Entry<Specifications, SourceProductPage>> linkageS = new ArrayList<>();
-				commonProdsS.forEach(i -> linkageS.add(linkedProds.get(i)));
-				// <------>
-				// DA SISTEMARE ORA CHE GLI ATTRIBUTI SONO GESTITI
-				// DIFFERENTEMENTE !!!!!!
-				// if(cardinality > 0 || checkSourceDomain(linkedProds, aSource,
-				// website, cardinality) ||
-				// hasSmallDomain(linkageS, aCatalog, false, cardinality))
-				// continue;
-				// if(aSource.equals(aCatalog))
-				// attrSet.add(aSource);
-				// <------>
+				commonPagesS.forEach(i -> linkageS.add(linkedProds.get(i)));
+
 				List<Entry<Specifications, SourceProductPage>> linkageL = new ArrayList<>();
 				commonProdsL.forEach(i -> linkageL.add(linkedProds.get(i)));
 
-				attributesLinkage.put(aSource + aCatalog, linkageS.size());
-				Features features = computeFeatures(linkageS, linkageL, aCatalog, aSource, useMI);
-				df.addRow(features, aCatalog, aSource);
+				attributesLinkage.put(attributeSource + attributeCatalog, linkageS.size());
+				Features features = computeFeatures(linkageS, linkageL, attributeCatalog, attributeSource, useMI);
+				df.addRow(features, attributeCatalog, attributeSource);
 			}
 
 		// System.out.println("Considerati: " + attrSet.size());

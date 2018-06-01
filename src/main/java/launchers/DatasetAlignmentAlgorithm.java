@@ -43,9 +43,7 @@ public class DatasetAlignmentAlgorithm {
 
 	/**
 	 * Se TRUE, gli attributi delle sorgenti che non matchano con nessun attributo
-	 * del catalogo vengono scartati. <br/>
-	 * OLD doc by Marco: "se true simula un'operazione di sintesi dei prodotti"
-	 * (???)
+	 * del catalogo vengono scartati. 
 	 */
 	static final boolean WITH_REFERENCE = false;
 
@@ -87,6 +85,7 @@ public class DatasetAlignmentAlgorithm {
 				System.out.println("FINE LOADING DEL MODEL");
 			} else {
 				System.out.println("INIZIO GENERAZIONE TRAINING SET");
+				// As we are in Synthetic dataset, there are no cloned sources
 				Map<String, List<String>> tSet = generateTrainingSets(categories, new HashMap<String, List<String>>());
 				fdc.printTrainingSet("trainingSet", tSet.get(categories.get(0)));
 				System.out.println("FINE GENERAZIONE TRAINING SET - INIZIO TRAINING");
@@ -211,7 +210,7 @@ public class DatasetAlignmentAlgorithm {
 			 * calcolati in funzione delle altre dimensioni, anche se questo calcolo non è
 			 * semplice da definire
 			 */
-			trainingSets.put(category, tsg.getTrainingSetWithTuples(300, 10000, false, true, 0.25, category));
+			trainingSets.put(category, tsg.getTrainingSetWithTuples(300, 10000, true, 0.25, category));
 		}
 
 		return trainingSets;

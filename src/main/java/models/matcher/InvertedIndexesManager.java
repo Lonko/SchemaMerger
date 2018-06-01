@@ -14,6 +14,10 @@ public class InvertedIndexesManager {
 
 	}
 
+	/**
+	 * Attribute in catalog --> index of pages of catalog in which this attribute is present
+	 * @return
+	 */
 	public Map<String, Set<Integer>> getCatalogIndex() {
 		return catalogIndex;
 	}
@@ -22,6 +26,11 @@ public class InvertedIndexesManager {
 		this.catalogIndex = catalogIndex;
 	}
 
+	/**
+	 * Attribute not in catalog --> index of pages linked (not in catalog) in which this attribute is present 
+	 * 
+	 * @return
+	 */
 	public Map<String, Set<Integer>> getLinkedIndex() {
 		return linkedIndex;
 	}
@@ -30,6 +39,11 @@ public class InvertedIndexesManager {
 		this.linkedIndex = linkedIndex;
 	}
 
+	/**
+	 * Attribute in new source --> index of pages of the new source
+	 * 
+	 * @return
+	 */
 	public Map<String, Set<Integer>> getSourceIndex() {
 		return sourceIndex;
 	}

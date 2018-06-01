@@ -38,7 +38,7 @@ public class MongoAlignmentDao implements AlignmentDao {
 	}
 
 	@Override
-	public List<SourceProductPage> getRLSample(int size, String category) {
+	public List<SourceProductPage> getSamplePagesFromCategory(int size, String category) {
 		// uses sample method of MongoDB
 		MongoCollection<Document> collection = this.database.getCollection(MongoDbUtils.PRODUCTS_COLLECTION_NAME);
 		List<SourceProductPage> sample = new ArrayList<>();
@@ -184,7 +184,7 @@ public class MongoAlignmentDao implements AlignmentDao {
 	}
 
 	@Override
-	public List<SourceProductPage> getProds(String category, String website1, String website2, String attribute) {
+	public List<SourceProductPage> getPagesOutsideCatalogInLinkageWithPagesInside(String category, String website1, String website2, String attribute) {
 		MongoCollection<Document> collection = this.database.getCollection(MongoDbUtils.PRODUCTS_COLLECTION_NAME);
 		List<SourceProductPage> prods = new ArrayList<>();
 		Bson cFilter = Filters.eq(MongoDbUtils.CATEGORY, category);
@@ -213,7 +213,7 @@ public class MongoAlignmentDao implements AlignmentDao {
 	}
 
 	@Override
-	public List<Entry<Specifications, SourceProductPage>> getProdsInRL(List<SourceProductPage> prods, String website,
+	public List<Entry<Specifications, SourceProductPage>> getPairsOfPagesInLinkage(List<SourceProductPage> prods, String website,
 			String attribute) {
 		Map<String, List<Integer>> rlMap = new HashMap<>();
 		List<String> docsToFetch = new ArrayList<>();
@@ -250,7 +250,7 @@ public class MongoAlignmentDao implements AlignmentDao {
 	}
 
 	@Override
-	public SourceProductPage getIfValid(String url) {
+	public SourceProductPage getPageFromUrlIfExistsInDataset(String url) {
 		Document firstResult = this.database.getCollection(MongoDbUtils.PRODUCTS_COLLECTION_NAME)
 				.find(Filters.and(Filters.eq(MongoDbUtils.URL, url),
 						Filters.ne(MongoDbUtils.LINKAGE, Collections.EMPTY_LIST),

@@ -78,7 +78,7 @@ public class RConnector {
 			this.eng.parseAndEval("data$Match <- factor(data$Match, levels=c(\"true\",\"false\"))");
 			// remove unnecessary columns
 			this.eng.parseAndEval("dataSub <- subset(data, select=-c(Attribute1, Attribute2, Website1,"
-					+ " Website2, Category, JSDw, JCw, MIw))");
+					+ " Website2, Category))");
 			// trainControl setup
 			this.eng.parseAndEval("tc <- trainControl(method=\"repeatedcv\", number=10, repeats=50, classProbs=TRUE,"
 					+ " savePredictions=TRUE, summaryFunction=twoClassSummary)");

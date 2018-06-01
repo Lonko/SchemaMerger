@@ -19,7 +19,11 @@ public class FeatureExtractor {
 	public FeatureExtractor() {
 	}
 
-	// Jensen-Shannon divergence
+	/**
+	 * Jensen-Shannon divergence (uses token distribution from each attribute of the pair)
+	 * @param bags
+	 * @return
+	 */
 	public double getJSD(BagsOfWordsManager bags) {
 		Map<String, Double> distProbCatalog = new HashMap<>();
 		Map<String, Double> distProbSource = new HashMap<>();
@@ -69,11 +73,6 @@ public class FeatureExtractor {
 
 	// Jaccard coefficient
 	public double getJC(BagsOfWordsManager bags) {
-		// TODO is it OK?
-		if (bags.getCatalogBagOfWords().isEmpty() && bags.getSourceBagOfWords().isEmpty()) {
-			return 0;
-		}
-
 		Set<String> intersection = new HashSet<>(bags.getCatalogBagOfWords());
 		Set<String> union = new HashSet<>(bags.getCatalogBagOfWords());
 
@@ -85,11 +84,6 @@ public class FeatureExtractor {
 
 	// Mutual Information
 	public double getMI(List<Entry<Specifications, SourceProductPage>> prods, String a1, String a2) {
-		// TODO is it OK?
-		if (prods.isEmpty()) {
-			return 0;
-		}
-
 		double mi = 0.0;
 
 		List<List<String>> valueSets = getDistinctValues(prods, a1, a2);
