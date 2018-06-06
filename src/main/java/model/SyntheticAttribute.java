@@ -11,19 +11,19 @@ import models.generator.TokenClass;
  *
  */
 public class SyntheticAttribute {
-	
+
 	/**
 	 * Generate attribute from a string representation (toString inverse)
 	 * @param attributeText
 	 * @return
 	 */
 	public static SyntheticAttribute parseAttribute(String attributeText) {
-		String[] name2features = attributeText.split("@@@");
+		String[] name2features = attributeText.split(SEPARATOR);
 		SyntheticAttribute sca = new SyntheticAttribute(name2features[0]);
 		
 		try (Scanner scanner = new Scanner(name2features[1])){
 			scanner.useDelimiter("@");
-			sca.setHead(scanner.next().equals("H"));
+			sca.setHeadOrTail(HeadOrTail.valueOf(scanner.next()));
 			sca.setCardinality(scanner.nextInt());
 			sca.setErrorRate(scanner.nextDouble());
 			sca.setTokenClass(TokenClass.parseTokenClass(scanner.next()));
@@ -31,11 +31,13 @@ public class SyntheticAttribute {
 		}
 	}
 	
+	private static final String SEPARATOR = "@@@";
 	public static final String NAME_FORMAT = "%s@@@%s@%d@%f@%s";
+	
 	private String name;
 	
 	//is head according to the number of sources in which it appears
-	private boolean isHead;
+	private HeadOrTail headOrTail;
 	private int cardinality;
 	private double errorRate;
 	private TokenClass tokenClass;
@@ -45,12 +47,12 @@ public class SyntheticAttribute {
 		this.name = name;
 	}
 
-	public boolean isHead() {
-		return isHead;
+	public HeadOrTail getHeadOrTail() {
+		return headOrTail;
 	}
 
-	public void setHead(boolean isHead) {
-		this.isHead = isHead;
+	public void setHeadOrTail(HeadOrTail headOrTail) {
+		this.headOrTail = headOrTail;
 	}
 
 	public int getCardinality() {
@@ -108,6 +110,6 @@ public class SyntheticAttribute {
 	
 	@Override
 	public String toString() {
-		return String.format(NAME_FORMAT, this.name, this.isHead ? "H" : "T", this.cardinality, this.errorRate, this.tokenClass.toString());
+		return String.format(NAME_FORMAT, this.name, this.headOrTail.name() , this.cardinality, this.errorRate, this.tokenClass.toString());
 	}
 }

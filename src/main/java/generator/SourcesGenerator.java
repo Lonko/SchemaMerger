@@ -12,8 +12,10 @@ import java.util.Set;
 
 import connectors.dao.SyntheticDatasetDao;
 import model.CatalogueProductPage;
+import model.HeadOrTail;
 import model.SourceProductPage;
 import model.SyntheticAttribute;
+import model.SyntheticSource;
 import models.generator.Configurations.RecordLinkageErrorType;
 import models.generator.CurveFunction;
 import models.generator.CurveFunctionFactory;
@@ -28,23 +30,20 @@ public class SourcesGenerator {
 
 	private SyntheticDatasetDao dao;
 	private StringGenerator stringGenerator;
-	private CurveFunction aExtLinkageCurve;
+	private CurveFunction sourcesPerAttribute;
 	private CurveFunction sourceSizes;
+	private int sourceHeadThreshold;
 	private CurveFunction productLinkage;
 	// Map <Source, ids of products in source>
-	private Map<String, List<Integer>> source2Ids = new HashMap<>();
+	private Map<SyntheticSource, List<Integer>> source2Ids = new HashMap<>();
 	// Map <id, Sources in which it appears>
-	private Map<Integer, List<String>> id2Sources = new HashMap<>();
-	
-	// Map of source name --> Error rates for that source (value, wrong linkage-missing linkage) 
-	private Map<String, Double> source2valueErrorRate;
-	private Map<String, Double> source2linkageErrorRate;
-	private Map<String, Double> source2missingLinkageRate;
+	private Map<Integer, List<SyntheticSource>> id2Sources = new HashMap<>();
+
 	/*
 	 * Maps to replace by implementing Attribute objects
 	 */
 	// Map <Attribute, schema>
-	private Map<String, List<SyntheticAttribute>> schemas = new HashMap<>();
+	private Map<SyntheticSource, List<SyntheticAttribute>> schemas = new HashMap<>();
 	// Map <Attribute, linkage>
 
 	/**
@@ -59,22 +58,23 @@ public class SourcesGenerator {
 	private SourceGeneratorConfiguration conf;
 
 	public SourcesGenerator(SyntheticDatasetDao dao, SourceGeneratorConfiguration conf, StringGenerator sg, CurveFunction sizes,
-			CurveFunction prods, CurveFunction attrsCurve, Map<SyntheticAttribute, String> fixedTokens, Map<SyntheticAttribute, List<String>> values) {
+			CurveFunction prods, CurveFunction sourcesPerAttrCurve, Map<SyntheticAttribute, String> fixedTokens, Map<SyntheticAttribute, List<String>> values) {
 		this.conf = conf;
 		this.dao = dao;
 		this.fixedTokens = fixedTokens;
 		this.values = values;
 		this.sourceSizes = sizes;
+		this.sourceHeadThreshold = sizes.getHeadThreshold();
 		this.productLinkage = prods;
-		this.aExtLinkageCurve = attrsCurve; 
+		this.sourcesPerAttribute = sourcesPerAttrCurve; 
 		this.stringGenerator = sg;
 	}
 
 	// assigns attributes to each source
-	private void assignAttributes(List<String> sourcesNames) {
-		List<String> shuffledSources = new ArrayList<>(sourcesNames);
+	private void assignAttributes(List<SyntheticSource> syntheticSources) {
+		List<SyntheticSource> shuffledSources = new ArrayList<>(syntheticSources);
 		List<SyntheticAttribute> attributes = new ArrayList<>(this.fixedTokens.keySet());
-		int[] attrLinkage = this.aExtLinkageCurve.getYValues();
+		int[] attrLinkage = this.sourcesPerAttribute.getYValues();
 
 		// for each attribute
 		for (int i = 0; i < attributes.size(); i++) {
@@ -87,7 +87,7 @@ public class SourcesGenerator {
 			 * curve for the external attribute linkage
 			 */
 			for (int j = 0; j < linkage; j++) {
-				String source = shuffledSources.get(j);
+				SyntheticSource source = shuffledSources.get(j);
 				List<SyntheticAttribute> schema = this.schemas.getOrDefault(source, new ArrayList<SyntheticAttribute>());
 				schema.add(attribute);
 				this.schemas.put(source, schema);
@@ -99,13 +99,13 @@ public class SourcesGenerator {
 	 * try replacing a product p in a full source with product n and put p in a
 	 * different source (that doesn't already have a page of the same product p)
 	 */
-	private boolean tryReplace(int idN, int[] sizes, List<String> sourceNames) {
+	private boolean tryReplace(int idN, int[] sizes, List<SyntheticSource> sourceNames) {
 		// sources (already full) to which the product n hasn't been assigned
-		List<String> availableSources = new ArrayList<>();
+		List<SyntheticSource> availableSources = new ArrayList<>();
 		// ids of products in availableSources
 		Set<Integer> possibleSwitchIds = new HashSet<>();
 
-		for (String source : sourceNames) {
+		for (SyntheticSource source : sourceNames) {
 			if (!this.source2Ids.get(source).contains(idN)) {
 				availableSources.add(source);
 				possibleSwitchIds.addAll(this.source2Ids.get(source));
@@ -114,21 +114,21 @@ public class SourcesGenerator {
 
 		// try replacing
 		for (int idP : possibleSwitchIds) {
-			List<String> sourcesP = this.id2Sources.get(idP);
+			List<SyntheticSource> sourcesP = this.id2Sources.get(idP);
 			// list of sources with p without n
-			List<String> intersection = new ArrayList<>(availableSources);
+			List<SyntheticSource> intersection = new ArrayList<>(availableSources);
 			intersection.retainAll(sourcesP);
-			String candidateSource;
+			SyntheticSource candidateSource;
 			if (intersection.size() == 0)
 				continue;
 			else
 				candidateSource = intersection.get(0);
-			for (String source : sourceNames) {
+			for (SyntheticSource source : sourceNames) {
 				int index = sourceNames.indexOf(source);
 				if (!this.source2Ids.get(source).contains(idP) && this.source2Ids.get(source).size() != sizes[index]) {
 					// update info P
 					List<Integer> ids = this.source2Ids.get(source);
-					List<String> sources = this.id2Sources.get(idP);
+					List<SyntheticSource> sources = this.id2Sources.get(idP);
 					ids.add(idP);
 					sources.add(source);
 					sources.remove(candidateSource);
@@ -152,8 +152,8 @@ public class SourcesGenerator {
 	}
 
 	// assigns products to each source
-	private void assignProducts(List<String> sourcesNames) {
-		List<String> shuffledSources = new ArrayList<>(sourcesNames);
+	private void assignProducts(List<SyntheticSource> syntheticSources) {
+		List<SyntheticSource> shuffledSources = new ArrayList<>(syntheticSources);
 		int[] prodsLinkage = this.productLinkage.getYValues();
 		int[] sSizes = this.sourceSizes.getYValues();
 
@@ -169,9 +169,9 @@ public class SourcesGenerator {
 			while (j < linkage) {
 				// if there are still sources with space available
 				if (j < shuffledSources.size()) {
-					String source = shuffledSources.get(j);
+					SyntheticSource source = shuffledSources.get(j);
 					List<Integer> ids = this.source2Ids.getOrDefault(source, new ArrayList<Integer>());
-					int index = sourcesNames.indexOf(source);
+					int index = syntheticSources.indexOf(source);
 					// skip if this source is full
 					if (ids.size() == sSizes[index]) {
 						// remove source from list of available sources and
@@ -179,7 +179,7 @@ public class SourcesGenerator {
 						shuffledSources.remove(source);
 						continue;
 					}
-					List<String> sources = this.id2Sources.getOrDefault(id, new ArrayList<String>());
+					List<SyntheticSource> sources = this.id2Sources.getOrDefault(id, new ArrayList<SyntheticSource>());
 					sources.add(source);
 					ids.add(id);
 					// put lists in maps in case they were created for the first
@@ -192,7 +192,7 @@ public class SourcesGenerator {
 					 * if all sources (without the page relative to this product) are full, try
 					 * replacing another product's page
 					 */
-					if (tryReplace(id, sSizes, sourcesNames)) {
+					if (tryReplace(id, sSizes, syntheticSources)) {
 						j++;
 						continue;
 					} else {
@@ -215,7 +215,7 @@ public class SourcesGenerator {
 		// partition the attributes according to both internal and external
 		// linkage
 		for (SyntheticAttribute attribute : schema) {
-			if (attribute.isHead())
+			if (attribute.getHeadOrTail().equals(HeadOrTail.H))
 				headAttributes.add(attribute);
 			else
 				tailAttributes.add(attribute);
@@ -233,7 +233,7 @@ public class SourcesGenerator {
 	}
 
 	// assigns a subset of attributes to each prod in source
-	private Map<Integer, List<SyntheticAttribute>> getProdsAttrs(String source, List<SyntheticAttribute> schema, CurveFunction curve) {
+	private Map<Integer, List<SyntheticAttribute>> getProdsAttrs(SyntheticSource source, List<SyntheticAttribute> schema, CurveFunction curve) {
 		List<SyntheticAttribute> headAttributes = getHeadAttributes(schema, curve);
 		List<SyntheticAttribute> tailAttributes = new ArrayList<>(schema);
 		tailAttributes.removeAll(headAttributes);
@@ -346,7 +346,7 @@ public class SourcesGenerator {
 	private void addSpecsToProductPage(SourceProductPage page, Map<String, String> oldSpecs,
 			Map<SyntheticAttribute, List<String>> newValues, List<SyntheticAttribute> attrs) {
 		Random rand = new Random();
-		double errorRateForSource = this.source2valueErrorRate.get(page.getSource().getWebsite());
+		double errorRateForSource = SyntheticSource.parseSource(page.getSource().getWebsite()).getValueErrorRate();
 
 		// check each attribute
 		for (String attributeRepr : oldSpecs.keySet()) {
@@ -377,26 +377,24 @@ public class SourcesGenerator {
 	}
 
 	// generates the products' pages for the source
-	private List<SourceProductPage> createProductsPages(String source, Map<SyntheticAttribute, List<String>> newValues,
+	private List<SourceProductPage> createProductsPages(SyntheticSource source, Map<SyntheticAttribute, List<String>> newValues,
 			Map<Integer, List<SyntheticAttribute>> pAttrs, List<CatalogueProductPage> products) {
 		List<SourceProductPage> prodPages = new ArrayList<>();
 		Random rnd = new Random();
-		double missingLinkageChanceForSource = this.source2missingLinkageRate.get(source);
-		double wrongLinkageChanceForSource = this.source2linkageErrorRate.get(source);
 
 		for (CatalogueProductPage prod : products) {
 			int realIds = prod.getId();
 			List<SyntheticAttribute> attrs = pAttrs.get(realIds);
-			String url = source + "/" + realIds + "/";
-			SourceProductPage page = new SourceProductPage(this.conf.getCategories().get(0), url, source);
+			String url = source.toString() + "/" + realIds + "/";
+			SourceProductPage page = new SourceProductPage(this.conf.getCategories().get(0), url, source.toString());
 
 			// linkage and IDs
-			List<Integer> ids = buildProductIds(missingLinkageChanceForSource, wrongLinkageChanceForSource, rnd, realIds);
+			List<Integer> ids = buildProductIds(source.getLinkageMissingRate(), source.getLinkageErrorRate(), rnd, realIds);
 			page.setIds(ids);
 			for (Integer id : ids) {
-				for (String rlSource : this.id2Sources.get(id)) {
+				for (SyntheticSource rlSource : this.id2Sources.get(id)) {
 					if (!rlSource.equals(source)) {
-						assignLinkageToPage(missingLinkageChanceForSource, wrongLinkageChanceForSource, rnd, id, page, rlSource);
+						assignLinkageToPage(source.getLinkageMissingRate(), source.getLinkageErrorRate(), rnd, id, page, rlSource);
 					}
 				}
 			}
@@ -419,7 +417,7 @@ public class SourcesGenerator {
 	 * @param rlSource
 	 */
 	private void assignLinkageToPage(double missingLinkageChanceForSource, double wrongLinkageChanceForSource, 
-			Random rnd, int id, SourceProductPage page, String rlSource) {
+			Random rnd, int id, SourceProductPage page, SyntheticSource rlSource) {
 		// By default the correct linkage should be added to the page
 		boolean setCorrectLinkage;
 		boolean setWrongLinkage;
@@ -442,7 +440,7 @@ public class SourcesGenerator {
 		List<String> pageLinkage = page.getLinkage();
 
 		if (setCorrectLinkage) {
-			pageLinkage.add(rlSource + "/" + id + "/");
+			pageLinkage.add(rlSource.toString() + "/" + id + "/");
 		}
 		if (setWrongLinkage) {
 			int wrongProdId = rnd.nextInt(this.id2Sources.size());
@@ -492,7 +490,7 @@ public class SourcesGenerator {
 	 * @param products
 	 * @return
 	 */
-	private List<SourceProductPage> createSource(String sourceName, int size, List<CatalogueProductPage> products) {
+	private List<SourceProductPage> createSource(SyntheticSource sourceName, int size, List<CatalogueProductPage> products) {
 		List<SyntheticAttribute> schema = this.schemas.get(sourceName);
 		CurveFunction aIntLinkage = CurveFunctionFactory.buildCurveFunction(CurveFunctionType.EXP, size, schema.size(), 1);
 		Map<Integer, List<SyntheticAttribute>> prodsAttrs = getProdsAttrs(sourceName, schema, aIntLinkage);
@@ -502,30 +500,35 @@ public class SourcesGenerator {
 	}
 
 	// assigns attributes and products to each source
-	public List<String> prepareSources() {
+	public List<SyntheticSource> prepareSources() {
 		// generate sources ids
-		Set<String> sourceNamesSet = new HashSet<>();
-		List<String> sourcesNames = new ArrayList<>();
+		Set<SyntheticSource> syntheticSourceSet = new HashSet<>();
+		List<SyntheticSource> syntheticSources = new ArrayList<>();
 
-		while (sourceNamesSet.size() < this.conf.getSources()) {
-			sourceNamesSet.add("www." + this.stringGenerator.generateSourceName() + ".com");
+		while (syntheticSourceSet.size() < this.conf.getSources()) {
+			syntheticSourceSet.add(new SyntheticSource("www." + this.stringGenerator.generateSourceName(), "com"));
 		}
-		sourcesNames.addAll(sourceNamesSet);
+		syntheticSources.addAll(syntheticSourceSet);
+		
+		//Set Head or Tail sources. This is useful for experiments, even if it has no effect for data generation
+		for (int i = 0; i < syntheticSources.size(); i++) {
+			syntheticSources.get(i).setHeadOrTail(i < this.sourceHeadThreshold ? HeadOrTail.H : HeadOrTail.T);
+		}
 
-		assignAttributes(sourcesNames);
-		assignProducts(sourcesNames);
-		this.source2valueErrorRate = this.conf.getValueErrorChanceClasses().assignClasses(sourcesNames);
-		this.source2linkageErrorRate = this.conf.getLinkageErrorChanceClasses().assignClasses(sourcesNames);
-		this.source2missingLinkageRate = this.conf.getMissingLinkageChanceClasses().assignClasses(sourcesNames);
+		assignAttributes(syntheticSources);
+		assignProducts(syntheticSources);
+		this.conf.getValueErrorChanceClasses().assignClasses(syntheticSources, (attr, valueError) -> attr.setValueErrorRate(valueError));
+		this.conf.getLinkageErrorChanceClasses().assignClasses(syntheticSources, (attr, linkageError) -> attr.setLinkageErrorRate(linkageError));
+		this.conf.getMissingLinkageChanceClasses().assignClasses(syntheticSources, (attr, missingLinkage) -> attr.setLinkageMissingRate(missingLinkage));
 
-		return sourcesNames;
+		return syntheticSources;
 	}
 
 	// returns a list of source names ordered by linkage with the previous
 	// sources
-	public List<String> getLinkageOrder(List<String> sourcesNames) {
-		List<String> orderedSources = new ArrayList<>();
-		List<String> sources2Visit = new ArrayList<>(sourcesNames);
+	public List<SyntheticSource> getLinkageOrder(List<SyntheticSource> sourcesNames) {
+		List<SyntheticSource> orderedSources = new ArrayList<>();
+		List<SyntheticSource> sources2Visit = new ArrayList<>(sourcesNames);
 		// the first is the one with the most product pages
 		orderedSources.add(sourcesNames.get(0));
 		sources2Visit.remove(sourcesNames.get(0));
@@ -533,10 +536,10 @@ public class SourcesGenerator {
 		// each iteration adds a new source to orderedSources
 		while (sources2Visit.size() > 0) {
 			int maxLinkage = -1;
-			String source = "";
+			SyntheticSource source = null;
 			// Set of product ids of the sources in orderedSources
 			Set<Integer> idsInPrevSources = new HashSet<>();
-			for (String s : orderedSources) {
+			for (SyntheticSource s : orderedSources) {
 				idsInPrevSources.addAll(this.source2Ids.get(s));
 			}
 			/*
@@ -544,7 +547,7 @@ public class SourcesGenerator {
 			 * sources in orderedSources
 			 */
 			for (int j = 0; j < sources2Visit.size(); j++) {
-				String currentSource = sources2Visit.get(j);
+				SyntheticSource currentSource = sources2Visit.get(j);
 				Set<Integer> idsInCurrentSource = new HashSet<>(this.source2Ids.get(currentSource));
 				idsInCurrentSource.retainAll(idsInPrevSources);
 				int linkage = idsInCurrentSource.size();
@@ -561,7 +564,7 @@ public class SourcesGenerator {
 	}
 
 	// generates the complete sources and returns attributes' linkage info
-	public Map<SyntheticAttribute, Integer> createSources(List<String> sourcesNames, boolean delete) {
+	public Map<SyntheticAttribute, Integer> createSources(List<SyntheticSource> sourcesNames, boolean delete) {
 		List<SourceProductPage> sourcePages;
 
 		// generates sources
@@ -569,7 +572,7 @@ public class SourcesGenerator {
 			this.dao.deleteAllSourceProductPages();
 
 		for (int i = 0; i < sourcesNames.size(); i++) {
-			String source = sourcesNames.get(i);
+			SyntheticSource source = sourcesNames.get(i);
 			int size = this.sourceSizes.getYValues()[i];
 			List<Integer> ids = this.source2Ids.get(source);
 			List<CatalogueProductPage> products = this.dao.getCatalogueProductsWithIds(ids);

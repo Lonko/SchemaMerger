@@ -27,7 +27,7 @@ public class MongoDbUtils {
 	public static final String IDS = "ids";
 	public static final String ID = "id";
 	public static final String LINKAGE = "linkage";
-	public static final String SPECS = "specs";
+	public static final String SPECS = "spec";
 	public static final String URL = "url";
 	public static final String CATEGORY = "category";
 	public static final String ATTRIBUTES = "attributes";

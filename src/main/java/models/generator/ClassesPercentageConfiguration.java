@@ -73,8 +73,8 @@ public class ClassesPercentageConfiguration<T> {
 	 * @param attrs
 	 * @return
 	 */
-	public Map<String, T> assignClasses(List<String> attrs) {
-		Map<String, T> result = new HashMap<>();
+	public <Q> Map<Q, T> assignClasses(List<Q> attrs) {
+		Map<Q, T> result = new HashMap<>();
 		assignClasses(attrs, (attr, val) ->  result.put(attr, val) );
 		return result;
 	}

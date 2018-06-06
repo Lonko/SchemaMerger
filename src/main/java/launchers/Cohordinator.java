@@ -7,6 +7,7 @@ import java.util.Scanner;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import model.HeadOrTail;
 import model.Source;
 import model.SyntheticAttribute;
 import models.generator.LaunchConfiguration;
@@ -47,7 +48,7 @@ public class Cohordinator {
 		SyntheticDataOutputStat sdo = sdg.generateSyntheticData(true);
 		System.out.println("FINE, statistiche: " + sdo.toString());
 		System.out.println("INIZIO ALLINEAMENTO");
-		Schema schema = algorithm.launchAlgorithmOnSyntheticDataset(sdo.getSourcesByLinkage());
+		Schema schema = algorithm.launchAlgorithmOnSyntheticDataset(sdo.getSourcesNamesByLinkage());
 
 		// Result Evaluation
 		System.out.println("INIZIO VALUTAZIONE RISULTATI");
@@ -85,6 +86,7 @@ public class Cohordinator {
 			Map<SyntheticAttribute, Integer> expectedClusterSizes) {
 		//Attributes in clusters contain their source name, so we remove it (it is not included in expectedClusterSizes)
 		
+		//TODO here we should also test the sources H/T. NOT SO SIMPLE because of expectedClusterSizes that should be changed
 		List<List<SyntheticAttribute>> clustersWithoutSourceName = clusters.stream().map(listSources -> 
 			listSources.stream().
 				map(sa -> SyntheticAttribute.parseAttribute(sa.split("###")[0]))
@@ -106,8 +108,8 @@ public class Cohordinator {
 			put("cardinality3", elem -> elem.getCardinality() == 3);
 			put("cardinality4-10", elem -> 4 <= elem.getCardinality() && elem.getCardinality() <= 10);
 			put("cardinality10+", elem -> 4 <= elem.getCardinality() && elem.getCardinality() <= 10);
-			put("HEAD attributes", elem -> elem.isHead());
-			put("TAIL attributes", elem -> !elem.isHead());
+			put("HEAD attributes", elem -> elem.getHeadOrTail().equals(HeadOrTail.H));
+			put("TAIL attributes", elem -> elem.getHeadOrTail().equals(HeadOrTail.T));
 			put("Error rate <0.1", elem -> elem.getErrorRate() < 0.1);
 			put("Error rate >=0.1", elem -> elem.getErrorRate() >= 0.1);
 		}

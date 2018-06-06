@@ -14,6 +14,7 @@ import generator.SourcesGenerator;
 import generator.StringGenerator;
 import model.CatalogueProductPage;
 import model.SyntheticAttribute;
+import model.SyntheticSource;
 import models.generator.Configurations;
 import models.generator.CurveFunction;
 import models.generator.LaunchConfiguration;
@@ -35,12 +36,12 @@ public class SyntheticDatasetGenerator {
 	private CurveFunction prodLinkage;
 	private Map<SyntheticAttribute, String> attrFixedTokens;
 	private Map<SyntheticAttribute, List<String>> attrValues;
-	private List<String> sourcesBySize;
-	private List<String> sourcesByLinkage;
+	private List<SyntheticSource> sourcesBySize;
+	private List<SyntheticSource> sourcesByLinkage;
 	/** @see #getAttrLinkage() */
 	private Map<SyntheticAttribute, Integer> attrLinkage;
 	private SyntheticDatasetDao catalogueDao;
-	private CurveFunction attributes;
+	private CurveFunction sourcesPerAttribute;
 	
 	/**
 	 * Factory method for {@link SyntheticDatasetGenerator}
@@ -79,14 +80,17 @@ public class SyntheticDatasetGenerator {
 		this.catalogueDao.uploadCatalogue(catalogue, delete);
 		this.sizes = cg.getSources2nbPagesCurve();
 		this.prodLinkage = cg.getProduct2nbPagesInLinkageCurve();
-		this.attributes = cg.getAttribute2nbSourcesCurve();
+		this.sourcesPerAttribute = cg.getAttribute2nbSourcesCurve();
 		this.attrFixedTokens = cg.getAttrFixedToken();
 		this.attrValues = cg.getAttrValues();
 	}
 
-	// generate and upload sources
+	/**
+	 *  generate and upload sources
+	 * @param delete
+	 */
 	private void generateSources(boolean delete) {
-		SourcesGenerator sg = new SourcesGenerator(this.catalogueDao, this.conf, this.sg, this.sizes, this.prodLinkage, this.attributes,
+		SourcesGenerator sg = new SourcesGenerator(this.catalogueDao, this.conf, this.sg, this.sizes, this.prodLinkage, this.sourcesPerAttribute,
 				this.attrFixedTokens, this.attrValues);
 		this.sourcesBySize = sg.prepareSources();
 		this.attrLinkage = sg.createSources(this.sourcesBySize, delete);

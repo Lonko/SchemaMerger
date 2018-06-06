@@ -2,8 +2,10 @@ package launchers;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import model.SyntheticAttribute;
+import model.SyntheticSource;
 
 /**
  * Class that provides some stats on results of synthetic dataset generator, as
@@ -15,7 +17,7 @@ import model.SyntheticAttribute;
  */
 public class SyntheticDataOutputStat {
 
-	private List<String> sourcesByLinkage;
+	private List<SyntheticSource> sourcesByLinkage;
 	private Map<SyntheticAttribute, Integer> attrLinkage;
 	private long catalogueTime;
 	private long datasetTime;
@@ -23,7 +25,7 @@ public class SyntheticDataOutputStat {
 	private int catalogueSize;
 	private int datasetSize;
 	
-	public SyntheticDataOutputStat(List<String> sourcesByLinkage, Map<SyntheticAttribute, Integer> attrLinkage, long catalogueTime,
+	public SyntheticDataOutputStat(List<SyntheticSource> sourcesByLinkage, Map<SyntheticAttribute, Integer> attrLinkage, long catalogueTime,
 			long datasetTime, long totalTime, int catalogueSize, int datasetSize) {
 		super();
 		this.sourcesByLinkage = sourcesByLinkage;
@@ -55,8 +57,8 @@ public class SyntheticDataOutputStat {
 		return datasetSize;
 	}
 
-	public List<String> getSourcesByLinkage() {
-		return sourcesByLinkage;
+	public List<String> getSourcesNamesByLinkage() {
+		return sourcesByLinkage.stream().map(source -> source.toString()).collect(Collectors.toList());
 	}
 	
 	public Map<SyntheticAttribute, Integer> getAttrLinkage() {

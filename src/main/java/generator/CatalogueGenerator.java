@@ -10,6 +10,7 @@ import java.util.Random;
 import java.util.Set;
 
 import model.CatalogueProductPage;
+import model.HeadOrTail;
 import model.SyntheticAttribute;
 import models.generator.CurveFunction;
 import models.generator.CurveFunctionFactory;
@@ -82,7 +83,7 @@ public class CatalogueGenerator {
 			Collections.shuffle(tokenPool);
 			String fixedTokens = "";
 			// mark attribute as head or tail
-			attribute.setHead(i <= headThreshold);
+			attribute.setHeadOrTail(i <= headThreshold ? HeadOrTail.H: HeadOrTail.T);
 
 			/*
 			 * TODO FP: perché avere un pool di token fissi, invece di generarli per ogni

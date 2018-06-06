@@ -1,7 +1,5 @@
 package connectors.dao;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,6 +25,7 @@ import connectors.MongoDbUtils;
 import model.AbstractProductPage.Specifications;
 import model.Source;
 import model.SourceProductPage;
+import utils.UrlUtils;
 
 public class MongoAlignmentDao implements AlignmentDao {
 
@@ -124,7 +123,7 @@ public class MongoAlignmentDao implements AlignmentDao {
 					// if it's not a page in the
 					// catalog create new map
 					// entry
-					if (!websites.contains(getDomain(p.getString(MongoDbUtils.URL)))) {
+					if (!websites.contains(UrlUtils.getDomain(p.getString(MongoDbUtils.URL)))) {
 						Document catalogPage = linkageUrls.get(p.getString(MongoDbUtils.URL));
 						extL.put(p, catalogPage);
 					}
@@ -158,29 +157,6 @@ public class MongoAlignmentDao implements AlignmentDao {
 
 		// <linked page, list of pages in catalog>
 		return rlMap;
-	}
-
-	private String getDomain(String url) {
-		String domain = null;
-		url = url.replaceAll(" ", "%20").replaceAll("\\|", "%7C").replaceAll("\"", "%22");
-		if (url.startsWith("http:/") || url.startsWith("https:/")) {
-			if (!url.startsWith("http://") && !url.startsWith("https://")) {
-				url = url.replace("http:/", "http://");
-				url = url.replace("https:/", "https://");
-			}
-		} else
-			url = "http://" + url;
-
-		try {
-			URI u = new URI(url);
-			domain = u.getHost();
-		} catch (URISyntaxException e) {
-			System.err.println("Couldn't extract host from URL: " + url);
-			e.printStackTrace();
-		}
-		domain = domain.replaceAll("%20", " ").replaceAll("%7C", "|");
-
-		return domain;
 	}
 
 	@Override
