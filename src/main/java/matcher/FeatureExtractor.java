@@ -158,8 +158,9 @@ public class FeatureExtractor {
 		Set<String> values2 = new HashSet<>();
 
 		for (Entry<Specifications, SourceProductPage> couple : prods) {
-			String[] value1 = couple.getKey().get(a1).split("###");
-			String[] value2 = couple.getValue().getSpecifications().get(a2).split("###");
+			// The parameter -1 avoids having empty arrays if content is '###' (it can happen)
+			String[] value1 = couple.getKey().get(a1).split("###", -1);
+			String[] value2 = couple.getValue().getSpecifications().get(a2).split("###", -1);
 			// if(a1.equals("Ethernet:") && a2.equals("Wi-Fi:"))
 			// System.out.println(value1+"\t"+value2);
 			values1.addAll(Arrays.asList(value1));

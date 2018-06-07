@@ -38,9 +38,13 @@ public class SyntheticAttribute {
 	
 	//is head according to the number of sources in which it appears
 	private HeadOrTail headOrTail;
-	private int cardinality;
-	private double errorRate;
+	private Integer cardinality;
+	private Double errorRate;
 	private TokenClass tokenClass;
+	
+	/** TODO this is used because too many toString cause a GC error. Note that this is not very readable 
+	 * (see for instance the code added to setXXX adn toString). Think if there are better solutions */
+	private String cachedToString;
 	
 	public SyntheticAttribute(String name) {
 		super();
@@ -52,6 +56,7 @@ public class SyntheticAttribute {
 	}
 
 	public void setHeadOrTail(HeadOrTail headOrTail) {
+		this.cachedToString = null;
 		this.headOrTail = headOrTail;
 	}
 
@@ -60,6 +65,7 @@ public class SyntheticAttribute {
 	}
 
 	public void setCardinality(int cardinality) {
+		this.cachedToString = null;
 		this.cardinality = cardinality;
 	}
 
@@ -68,6 +74,7 @@ public class SyntheticAttribute {
 	}
 
 	public void setErrorRate(double errorRate) {
+		this.cachedToString = null;
 		this.errorRate = errorRate;
 	}
 
@@ -76,6 +83,7 @@ public class SyntheticAttribute {
 	}
 
 	public void setTokenClass(TokenClass tokenClass) {
+		this.cachedToString = null;
 		this.tokenClass = tokenClass;
 	}
 	
@@ -110,6 +118,9 @@ public class SyntheticAttribute {
 	
 	@Override
 	public String toString() {
-		return String.format(NAME_FORMAT, this.name, this.headOrTail.name() , this.cardinality, this.errorRate, this.tokenClass.toString());
+		if (this.cachedToString == null) {
+			this.cachedToString = String.format(NAME_FORMAT, this.name, this.headOrTail.name() , this.cardinality, this.errorRate, this.tokenClass.toString());
+		}
+		return this.cachedToString;
 	}
 }

@@ -254,7 +254,7 @@ public class TrainingSetGenerator {
 			List<Entry<Specifications, SourceProductPage>> sList2 = this.dao.getPairsOfPagesInLinkage(subProds_of_w1, website2,
 					attribute2);
 			
-			feature = computeFeatures(sList2, new ArrayList<Entry<Specifications, SourceProductPage>>(), cList2,
+			feature = computeFeatures(sList2, cList2,
 					attribute1, attribute2, candidateType);
 			features.add(feature);
 		}
@@ -271,7 +271,6 @@ public class TrainingSetGenerator {
 	 * @return
 	 */
 	private Features computeFeatures(List<Entry<Specifications, SourceProductPage>> sList,
-			List<Entry<Specifications, SourceProductPage>> wList,
 			List<Entry<Specifications, SourceProductPage>> cList, String a1, String a2, double type) {
 
 		Features features = new Features();

@@ -24,6 +24,10 @@ public class SyntheticSource {
 	private Double linkageErrorRate;
 	private Double linkageMissingRate;
 	
+	/** TODO this is used because too many toString cause a GC error. Note that this is not very readable 
+	 * (see for instance the code added to setXXX adn toString). Think if there are better solutions */
+	private String cachedToString;
+	
 	public SyntheticSource(String domain, String extension) {
 		super();
 		this.domain = domain;
@@ -46,6 +50,7 @@ public class SyntheticSource {
 	}
 
 	public void setHeadOrTail(HeadOrTail headOrTail) {
+		this.cachedToString = null;
 		this.headOrTail = headOrTail;
 	}
 	
@@ -58,6 +63,7 @@ public class SyntheticSource {
 	}
 
 	public void setValueErrorRate(Double valueErrorRate) {
+		this.cachedToString = null;
 		this.valueErrorRate = valueErrorRate;
 	}
 
@@ -66,6 +72,7 @@ public class SyntheticSource {
 	}
 
 	public void setLinkageErrorRate(Double linkageErrorRate) {
+		this.cachedToString = null;
 		this.linkageErrorRate = linkageErrorRate;
 	}
 
@@ -74,6 +81,7 @@ public class SyntheticSource {
 	}
 
 	public void setLinkageMissingRate(Double linkageMissingRate) {
+		this.cachedToString = null;
 		this.linkageMissingRate = linkageMissingRate;
 	}
 
@@ -114,9 +122,12 @@ public class SyntheticSource {
 	
 	@Override
 	public String toString() {
-		String allData = String.join(SEPARATOR, Arrays.asList(domain, headOrTail.name(), print2decimal(this.valueErrorRate), 
-				print2decimal(this.linkageErrorRate), print2decimal(this.linkageMissingRate)));
-		return String.format(FORMAT, allData, extension);		
+		if (this.cachedToString == null) {
+			String allData = String.join(SEPARATOR, Arrays.asList(domain, headOrTail.name(), print2decimal(this.valueErrorRate), 
+					print2decimal(this.linkageErrorRate), print2decimal(this.linkageMissingRate)));
+			this.cachedToString = String.format(FORMAT, allData, extension);
+		}
+		return this.cachedToString;
 	}
 	
 	private String print2decimal(double doubleVersion) {

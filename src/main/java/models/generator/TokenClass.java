@@ -9,6 +9,8 @@ import java.util.Scanner;
  */
 public class TokenClass {
 	
+	private static final String TOKEN_CLASS_FORMAT = "%d-%d";
+
 	public TokenClass(int random, int fixed) {
 		super();
 		this.random = random;
@@ -16,8 +18,8 @@ public class TokenClass {
 	}	
 	
 	private int random;
-	
 	private int fixed;
+	private String cachedToString;
 	
 	public int getRandom() {
 		return random;
@@ -54,7 +56,10 @@ public class TokenClass {
 	
 	@Override
 	public String toString() {
-		return String.format("%d-%d", this.random, this.fixed);
+		if (this.cachedToString == null) {
+			this.cachedToString = String.format(TOKEN_CLASS_FORMAT, this.random, this.fixed);
+		}
+		return this.cachedToString;
 	}
 
 	/**
