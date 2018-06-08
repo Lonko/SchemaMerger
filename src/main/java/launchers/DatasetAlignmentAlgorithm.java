@@ -14,7 +14,6 @@ import connectors.RConnector;
 import connectors.dao.AlignmentDao;
 import connectors.dao.MongoAlignmentDao;
 import matcher.CategoryMatcher;
-import matcher.FeatureExtractor;
 import matcher.TrainingSetGenerator;
 import model.Source;
 import models.generator.Configurations;
@@ -198,7 +197,7 @@ public class DatasetAlignmentAlgorithm {
 	private Map<String, List<String>> generateTrainingSets(List<String> categories,
 			Map<String, List<String>> clonedSources) {
 
-		TrainingSetGenerator tsg = new TrainingSetGenerator(this.dao, new FeatureExtractor(), clonedSources);
+		TrainingSetGenerator tsg = new TrainingSetGenerator(this.dao, clonedSources);
 		Map<String, List<String>> trainingSets = new HashMap<>();
 
 		for (String category : categories) {

@@ -160,29 +160,17 @@ public class MongoAlignmentDao implements AlignmentDao {
 	}
 
 	@Override
-	public List<SourceProductPage> getPagesOutsideCatalogInLinkageWithPagesInside(String category, String website1, String website2, String attribute) {
+	public List<SourceProductPage> getPagesLinkedWithSource2filtered(String category, String website2, String attribute) {
 		MongoCollection<Document> collection = this.database.getCollection(MongoDbUtils.PRODUCTS_COLLECTION_NAME);
 		List<SourceProductPage> prods = new ArrayList<>();
 		Bson cFilter = Filters.eq(MongoDbUtils.CATEGORY, category);
-		Bson wFilter = Filters.eq(MongoDbUtils.WEBSITE, website1);
 		Pattern regex = Pattern.compile(".*" + website2.replace(".", "\\.") + ".*", Pattern.CASE_INSENSITIVE);
 		Bson lFilter = Filters.eq(MongoDbUtils.LINKAGE, regex);
 		Bson aFilter = Filters.exists(MongoDbUtils.SPECS + "." + attribute, true);
-		Bson andFilter;
+		
+		Bson andFilter = Filters.and(Arrays.asList(cFilter, aFilter, lFilter));
 
-		List<Bson> filters = new ArrayList<>();
-		if (!category.equals(""))
-			filters.add(cFilter);
-		if (!website1.equals(""))
-			filters.add(wFilter);
-		if (!attribute.equals(""))
-			filters.add(aFilter);
-		if (!website2.equals(""))
-			filters.add(lFilter);
-
-		andFilter = Filters.and(filters);
-
-		collection.find(Filters.and(andFilter)).limit(2000)
+		collection.find(andFilter)
 				.forEach((Document d) -> prods.add(MongoDbUtils.convertDocumentToProductPage(d)));
 
 		return prods;

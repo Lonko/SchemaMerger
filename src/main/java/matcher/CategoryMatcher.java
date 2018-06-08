@@ -20,7 +20,6 @@ import connectors.RConnector;
 import connectors.dao.AlignmentDao;
 import model.AbstractProductPage.Specifications;
 import model.SourceProductPage;
-import models.matcher.BagsOfWordsManager;
 import models.matcher.DataFrame;
 import models.matcher.Features;
 import models.matcher.InvertedIndexesManager;
@@ -36,18 +35,13 @@ import models.matcher.Schema;
 public class CategoryMatcher {
 
 	private AlignmentDao dao;
-	private FeatureExtractor fe;
 	private RConnector r;
-
-	public CategoryMatcher(AlignmentDao dao) {
-		this.dao = dao;
-		this.fe = new FeatureExtractor();
-	}
+	private FeaturesBuilder fb;
 
 	public CategoryMatcher(AlignmentDao dao, RConnector r) {
 		this.dao = dao;
-		this.fe = new FeatureExtractor();
 		this.r = r;
+		this.fb = new FeaturesBuilder();
 	}
 
 	/**
@@ -91,6 +85,8 @@ public class CategoryMatcher {
 
 				matched = true;
 			} catch (Exception e) {
+				System.err.println("Errore durante la classificazione: "+e.getMessage());
+				e.printStackTrace();
 				System.out.println("CON LINKAGE -> " + checkIfValidWebsite(newSource, linkageMap.keySet()));
 				System.out.println("(df di lunghezza : " + dataFrame.getAttrCatalog().size() + ")");
 			}
@@ -276,7 +272,7 @@ public class CategoryMatcher {
 				commonProdsL.forEach(i -> linkageL.add(linkedProds.get(i)));
 
 				attributesLinkage.put(attributeSource + attributeCatalog, linkageS.size());
-				Features features = computeFeatures(linkageS, linkageL, attributeCatalog, attributeSource, useMI);
+				Features features = this.fb.computeFeatures(linkageS, linkageL, attributeCatalog, attributeSource, useMI);
 				df.addRow(features, attributeCatalog, attributeSource);
 			}
 
@@ -284,41 +280,6 @@ public class CategoryMatcher {
 		// System.out.println(attrSet.toString());
 
 		return df;
-	}
-
-	// public void printTemp(List<Document[]> l, String a){
-	// for(Document[] d : l){
-	// String value1 = d[0].get("spec", Document.class).getString(a);
-	// String value2 = d[1].get("spec", Document.class).getString(a);
-	// if(!value1.equals(value2))
-	// System.out.println(value1+"----->"+value2);
-	// }
-	// }
-
-	public Features computeFeatures(List<Entry<Specifications, SourceProductPage>> sList,
-			List<Entry<Specifications, SourceProductPage>> cList, String a1, String a2, boolean useMI) {
-
-		Features features = new Features();
-		BagsOfWordsManager sBags = new BagsOfWordsManager(a1, a2, sList);
-		BagsOfWordsManager cBags = new BagsOfWordsManager(a1, a2, cList);
-
-		features.setSourceJSD(this.fe.getJSD(sBags));
-		features.setCategoryJSD(this.fe.getJSD(cBags));
-		features.setSourceJC(this.fe.getJC(sBags));
-		features.setCategoryJC(this.fe.getJC(cBags));
-		if (useMI) {
-			features.setSourceMI(this.fe.getMI(sList, a1, a2));
-			features.setCategoryMI(this.fe.getMI(cList, a1, a2));
-		}
-		if (features.hasNan())
-			throw new ArithmeticException("feature value is NaN");
-
-		// if(a1.equals("Apps Platform") && a2.equals("Apps Platform")){
-		// printTemp(cList, a1);
-		// System.out.println(features.toString());
-		// }
-
-		return features;
 	}
 
 	// calls hasSmallDomain using all the products pages in website with the

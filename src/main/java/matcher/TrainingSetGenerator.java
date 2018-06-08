@@ -8,14 +8,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import connectors.dao.AlignmentDao;
-import me.tongfei.progressbar.ProgressBar;
 import model.AbstractProductPage.Specifications;
 import model.Source;
 import model.SourceProductPage;
-import models.matcher.BagsOfWordsManager;
 import models.matcher.Features;
 import models.matcher.Tuple;
 
@@ -30,13 +29,17 @@ import models.matcher.Tuple;
 public class TrainingSetGenerator {
 
 	private AlignmentDao dao;
-	private FeatureExtractor fe;
 	private Map<String, List<String>> clonedSources;
-
-	public TrainingSetGenerator(AlignmentDao dao, FeatureExtractor fe, Map<String, List<String>> clSources) {
+	private FeaturesBuilder fb;
+	
+	public TrainingSetGenerator(FeaturesBuilder fb, AlignmentDao dao, Map<String, List<String>> clSources) {
 		this.dao = dao;
-		this.fe = fe;
 		this.clonedSources = clSources;
+		this.fb = fb;
+	}	
+	
+	public TrainingSetGenerator(AlignmentDao dao, Map<String, List<String>> clSources) {
+		this(new FeaturesBuilder(), dao, clSources);
 	}
 
 	/**
@@ -225,12 +228,13 @@ public class TrainingSetGenerator {
 			Map<String, Map<String, List<Tuple>>> s2_a2_tuple = a1_s2_a2_tuple_entry.getValue();
 			for (Entry<String, Map<String, List<Tuple>>> s2_a2_tuple_entry : s2_a2_tuple.entrySet()) {
 				String source2 = s2_a2_tuple_entry.getKey();
-				List<SourceProductPage> pagesFromAllSourcesInLinkageS2 = this.dao.getPagesOutsideCatalogInLinkageWithPagesInside(category, "", source2,
+				List<SourceProductPage> pagesFromAllSourcesInLinkageS2 = this.dao.getPagesLinkedWithSource2filtered(category, source2,
 						attribute1);
 				Map<String, List<SourceProductPage>> w1_pagesLinkageS2 = pagesFromAllSourcesInLinkageS2.stream()
-						.collect(Collectors.groupingBy(prodPage -> prodPage.getSource().getWebsite()));
+						.collect(Collectors.groupingBy(prodPage -> prodPage.getSource().getWebsite(), limitingList(2000)));
+				pagesFromAllSourcesInLinkageS2 = pagesFromAllSourcesInLinkageS2.stream().limit(2000).collect(Collectors.toList());
 				for (Entry<String, List<Tuple>> a2_tuple : s2_a2_tuple_entry.getValue().entrySet()) {
-					getFeatures(candidateType, features, null, attribute1,
+					getFeatures(candidateType, features, attribute1,
 							source2, pagesFromAllSourcesInLinkageS2, w1_pagesLinkageS2, a2_tuple.getKey(), a2_tuple.getValue());
 				}
 			}
@@ -238,8 +242,23 @@ public class TrainingSetGenerator {
 		}
 		return features;
 	}
+	
+	/**
+	 * Limit group by 
+	 * https://stackoverflow.com/questions/33853611/limit-groupby-in-java-8?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
+	 * */
+	private static <T> Collector<T, ?, List<T>> limitingList(int limit) {
+	    return Collector.of(
+	                ArrayList::new, 
+	                (l, e) -> { if (l.size() < limit) l.add(e); }, 
+	                (l1, l2) -> {
+	                    l1.addAll(l2.subList(0, Math.min(l2.size(), Math.max(0, limit - l1.size()))));
+	                    return l1;
+	                }
+	           );
+	}
 
-	private void getFeatures(double candidateType, List<Features> features, ProgressBar pb,
+	private void getFeatures(double candidateType, List<Features> features, 
 			String attribute1, String website2, List<SourceProductPage> pagesInLinkageS2,
 			Map<String, List<SourceProductPage>> w1_pagesLinkageS2, String attribute2, List<Tuple> tuplesFromS2withA1A2) {
 		// Here we deal with tuple for a specific a1, a2 and w2, and all possible W1s.
@@ -254,41 +273,15 @@ public class TrainingSetGenerator {
 			List<Entry<Specifications, SourceProductPage>> sList2 = this.dao.getPairsOfPagesInLinkage(subProds_of_w1, website2,
 					attribute2);
 			
-			feature = computeFeatures(sList2, cList2,
-					attribute1, attribute2, candidateType);
-			features.add(feature);
+			try {
+				feature = this.fb.computeFeatures(sList2, cList2,
+						attribute1, attribute2, candidateType);
+				features.add(feature);
+			} catch (Exception e) {
+				System.err.printf("There was a problem computing features from %s-%s to %s-%s, skipping (error: %s)...", website1, attribute1,
+						website2, attribute2, e.getMessage());
+			}
 		}
-	}
-
-	/**
-	 * 
-	 * @param sList coppia di pagine in linkage appartenenti alle sorgenti della tupla
-	 * @param wList TODO eliminare --> stesso website diversa categoria
-	 * @param cList coppia di pagine in linkage mantenendo come s2 la sorgente della tupla, e cercando tutte le possibili s1 nella categoria
-	 * @param a1
-	 * @param a2
-	 * @param type
-	 * @return
-	 */
-	private Features computeFeatures(List<Entry<Specifications, SourceProductPage>> sList,
-			List<Entry<Specifications, SourceProductPage>> cList, String a1, String a2, double type) {
-
-		Features features = new Features();
-		BagsOfWordsManager sBags = new BagsOfWordsManager(a1, a2, sList);
-		BagsOfWordsManager cBags = new BagsOfWordsManager(a1, a2, cList);
-
-		features.setSourceJSD(this.fe.getJSD(sBags));
-		features.setCategoryJSD(this.fe.getJSD(cBags));
-		features.setSourceJC(this.fe.getJC(sBags));
-		features.setCategoryJC(this.fe.getJC(cBags));
-		features.setSourceMI(this.fe.getMI(sList, a1, a2));
-		features.setCategoryMI(this.fe.getMI(cList, a1, a2));
-
-		features.setMatch(type);
-		if (features.hasNan())
-			throw new ArithmeticException("feature value is NaN");
-
-		return features;
 	}
 
 }

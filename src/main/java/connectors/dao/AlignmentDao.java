@@ -77,15 +77,13 @@ public interface AlignmentDao {
 	 * 
 	 * @param category
 	 *            category of product page
-	 * @param website1
-	 *            website of product page
 	 * @param website2
 	 *            the PP should be linked with at least a page of that website
 	 * @param attribute1
 	 *            the PP should provide that attribute
 	 * @return
 	 */
-	public List<SourceProductPage> getPagesOutsideCatalogInLinkageWithPagesInside(String category, String website1,
+	public List<SourceProductPage> getPagesLinkedWithSource2filtered(String category,
 			String website2, String attribute1);
 
 	/**

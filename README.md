@@ -22,7 +22,7 @@
 * [x] Classifier training method (currently done with a simple R script)
 * [ ] Dictionary based String generator
 * [x] Sources creation from synthetic catalog  :exclamation:
-* [ ] Error Rate curve for the generated sources
+* [x] Error Rate curve for the generated sources
 * [x] Automatic evaluation of classification on synthetic dataset  :exclamation:
 * [ ] Compute on dataset the order of sources
 

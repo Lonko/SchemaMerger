@@ -18,7 +18,6 @@ public class AlignmentDaoMock implements AlignmentDao {
 
 	public static String MOCKED_WEBSITE1 = "mock1.com";
 	public static List<String> MOCKED_WEBSITES = Arrays.asList(MOCKED_WEBSITE1, "mock2.com", "mock3.com", "mock4.com");
-	private int val = 0; // value of attributes, not constant but deterministic
 
 	@Override
 	public List<SourceProductPage> getSamplePagesFromCategory(int size, String category) {
@@ -44,7 +43,7 @@ public class AlignmentDaoMock implements AlignmentDao {
 		return prods;
 	}
 
-	private String buildUrl(String website, int num) {
+	public String buildUrl(String website, int num) {
 		return website + "/" + num;
 	}
 
@@ -67,10 +66,10 @@ public class AlignmentDaoMock implements AlignmentDao {
 	}
 
 	@Override
-	public List<SourceProductPage> getPagesOutsideCatalogInLinkageWithPagesInside(String category, String website1, String website2, String attribute1) {
-		System.out.printf("Called getProds with category %s and website1 %s and website2 %s and attribute1 %s\n",
-				category, website1, website2, attribute1);
-		return buildProdList(5, category, website1, website2, attribute1);
+	public List<SourceProductPage> getPagesLinkedWithSource2filtered(String category, String website2, String attribute1) {
+		System.out.printf("Called getProds with category %s and website2 %s and attribute1 %s\n",
+				category, website2, attribute1);
+		return buildProdList(5, category, null, website2, attribute1);
 	}
 
 	@Override
@@ -78,6 +77,8 @@ public class AlignmentDaoMock implements AlignmentDao {
 			String website2, String attribute2) {
 		System.out.printf("Called getProdsInRL with cList1 %s, website2 %s and attribute2 %s\n", cList1.toString(),
 				website2, attribute2);
+		
+		int val = 0; // value of attributes in linked products, not constant but deterministic
 
 		List<Entry<Specifications, SourceProductPage>> results = new LinkedList<>();
 		for (SourceProductPage spp : cList1) {

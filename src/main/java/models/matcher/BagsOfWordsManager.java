@@ -28,8 +28,8 @@ public class BagsOfWordsManager {
 		for (Entry<Specifications, SourceProductPage> couple : pairsOfPage) {
 			// The value attribute in the classification step, in wordsCatalog may have different values merged using ### as separator.
 			// It should not happen in wordsSource, (TODO verify)
-			String[] wordsCatalog = couple.getKey().get(attributeCatalog).split("( |(###))+");
-			String[] wordsSource = couple.getValue().getSpecifications().get(attributeSource).split("( |(###))+");
+			String[] wordsCatalog = couple.getKey().get(attributeCatalog).split("( |(###))+", -1);
+			String[] wordsSource = couple.getValue().getSpecifications().get(attributeSource).split("( |(###))+", -1);
 			catalogBagOfWords.addAll(Arrays.asList(wordsCatalog));
 			sourceBagOfWords.addAll(Arrays.asList(wordsSource));
 		}
